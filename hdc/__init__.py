@@ -14,6 +14,18 @@ from .dictionaries import (
 )
 from .encoder import EncoderConfig, WindowEncoder
 from .readouts import BaseReadout, LinearReadout, PrototypeReadout
+from .search import (
+    EncoderSearchSpec,
+    SearchConfig,
+    SearchResult,
+    SplitData,
+    ValidationData,
+    rank_results,
+    run_validator_search,
+    top_candidates,
+    write_results_csv,
+    write_results_jsonl,
+)
 
 __all__ = [
     "BaseHypervectorInitializer",
@@ -33,4 +45,14 @@ __all__ = [
     "BaseReadout",
     "PrototypeReadout",
     "LinearReadout",
+    "EncoderSearchSpec",
+    "SearchConfig",
+    "SplitData",
+    "ValidationData",
+    "SearchResult",
+    "run_validator_search",
+    "rank_results",
+    "top_candidates",
+    "write_results_jsonl",
+    "write_results_csv",
 ]
