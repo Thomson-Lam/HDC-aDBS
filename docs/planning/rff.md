@@ -1,12 +1,31 @@
+# RFF Initialization Notes
 
-Contents: 
+## Concise summary
+
+RFF initialization replaces arbitrary random basis hypervectors with binary hypervectors sampled from a correlated Gaussian process so their expected pairwise similarities match a chosen target matrix. In practice, we build a target similarity matrix `M` (for our case: quantized value bins), convert it to a Gaussian covariance with `sin((pi/2) * M)`, sample Gaussian features, and apply `sign` to obtain binary `{-1, +1}` hypervectors.
+
+## Locked assumptions for this project
+
+| Parameter | Assumption |
+| --- | --- |
+| Entity set for RFF init | Value/bin hypervectors only (quantized signal bins). Position hypervectors stay random binary. |
+| Binary convention | Use bipolar hypervectors in `{-1, +1}`. |
+| Bin centers | Normalize bin centers to `[0, 1]`. |
+| Target similarity `M` | RBF kernel over bin centers: `M_ij = exp(- (c_i - c_j)^2 / (2 * sigma^2))`. |
+| RBF bandwidth `sigma` | Fixed by bin spacing, not tuned: `sigma = 1 / (n_bins - 1)` for `n_bins > 1`. |
+| Covariance construction | `Sigma_hat = sin((pi/2) * M)` elementwise. |
+| PSD handling | Symmetrize and clip negative eigenvalues to `0` before sampling. |
+| Sign tie rule | `sign(0)` maps to `+1`. |
+| Output shape | One hypervector per entity: `(n_entities, D)`. |
+
+Contents:
 
 1. **What problem RFF init is trying to solve**
 2. **How the construction works step by step**
 3. **Why Gaussians show up**
 4. **Why the sign operation gives binary hypervectors**
 5. **Where the arcsin / sine math comes from**
-6. **What “richer representation” means mathematically**
+6. **What "richer representation" means mathematically**
 7. **What this means in practice for your project**
 
 ---
