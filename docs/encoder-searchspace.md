@@ -22,45 +22,27 @@ Bins: bins = {8, 16, 32}
 
 Window length:
 
-Because your target is beta-band pathology, the window has to be long enough to reflect oscillatory content, not just pointwise amplitude.
+Lock to 512 ms (128 samples at 250 Hz).
 
-At 250 Hz, I would search:
+Reason:
 
-256 ms
-512 ms
-768 ms
+* aligns with the global experiment spec
+* reduces confounding between encoder design choices and environment contract
+* keeps offline and online evaluation on the same temporal context
 
-That is about:
-
-64 samples
-128 samples
-192 samples
-
-Why this range:
-
-too short and the window may not capture enough beta structure
-too long and the detector becomes sluggish
-
-If you want an even smaller search, do just:
-
-256 ms
-512 ms
 Normalization choices
 
-Use exactly these 3 options:
+Lock to per-window z-score only:
 
-per-window z-score
-subtract window mean, divide by window std
-healthy-reference z-score
-subtract healthy-train mean, divide by healthy-train std
-robust scaling + clipping
-center by median, scale by IQR or MAD, then clip to a fixed range before binning
+* subtract each window mean
+* divide by each window standard deviation
 
-My recommendation:
+Reason:
 
-start with per-window z-score
-keep healthy-reference z-score as the most important alternative
-robust scaling is optional if the simulated amplitudes vary a lot
+* least assumptions about global healthy reference statistics
+* no dependency on reference-stat estimation quality
+* naturally leakage-resistant in the offline pipeline
+
 Initialization choice
 
 Use:
@@ -102,21 +84,21 @@ A practical budget is:
 
 3 dimensions
 3 bin counts
-2 window sizes
-2 normalization schemes
+1 window size
+1 normalization scheme
 2 init methods
 
-That is 72 configs before readout comparison.
+That is 18 configs before readout comparison.
 
-That is already borderline, so I would shrink it to:
+For the locked MVP validator search:
 
 D: 1000, 5000, 10000
 bins: 8, 16
-windows: 256 ms, 512 ms
-norm: per-window z, healthy-reference z
+window: 512 ms
+norm: per-window z-score
 init: random, RFF
 
-That is 48 configs, which is much more realistic.
+That is 12 configs, which is compact and easier to audit.
 
 Selection metric for the validator
 
@@ -127,4 +109,3 @@ I would choose a validation ranking like:
 primary: balanced accuracy or AUROC on healthy vs pathological
 secondary: margin separation on onset / moderate windows
 tie-breaker: mean encoding time per window
-
