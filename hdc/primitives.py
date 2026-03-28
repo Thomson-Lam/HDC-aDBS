@@ -1,15 +1,15 @@
-"""Core hypervector primitives for bipolar binary HDC.
-
-All binary hypervectors use the bipolar convention {-1, +1}.
+"""
+Core hypervector primitives and functions for binary HDC. All binary hypervectors use the bipolar convention {-1, +1}.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-
+# normalize/map the values to -1 and 1 only which is what we accept.
 def bipolarize(x: np.ndarray, zero_to: int = 1) -> np.ndarray:
-    """Convert an array to bipolar {-1, +1} values.
+    """
+    Convert an array to bipolar {-1, +1} values.
 
     Args:
         x: Input array.
@@ -21,7 +21,7 @@ def bipolarize(x: np.ndarray, zero_to: int = 1) -> np.ndarray:
     out = np.where(x == 0, zero_to, out)
     return out.astype(np.int8, copy=False)
 
-
+# binding 
 def bind(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Bind two bipolar hypervectors with elementwise sign-product."""
     if a.shape != b.shape:
@@ -30,9 +30,10 @@ def bind(a: np.ndarray, b: np.ndarray) -> np.ndarray:
         np.int8, copy=False
     )
 
-
+# bundling 
 def bundle(hypervectors: np.ndarray, axis: int = 0, zero_to: int = 1) -> np.ndarray:
-    """Bundle hypervectors via majority vote then bipolarize.
+    """
+    Bundle hypervectors via majority vote then bipolarize.
 
     For bipolar vectors, bundling is sum followed by sign.
     """
@@ -41,16 +42,17 @@ def bundle(hypervectors: np.ndarray, axis: int = 0, zero_to: int = 1) -> np.ndar
     summed = np.sum(hypervectors, axis=axis, dtype=np.int32)
     return bipolarize(summed, zero_to=zero_to)
 
-
+# L2 normalize is used to make sim scores in normalized_dot behave like cosine similarity instead of raw dot product, because raw dot depends on magnitude of vectors and not just direction; we need to know how aligned the patterns are instead of the value of the norm.
 def l2_normalize(x: np.ndarray, axis: int = -1, eps: float = 1e-12) -> np.ndarray:
     """Return L2-normalized array along axis."""
     norms = np.linalg.norm(x, axis=axis, keepdims=True)
-    norms = np.maximum(norms, eps)
+    norms = np.maximum(norms, eps) # epsilon prevents division by 0 err
     return x / norms
 
-
+# cosine similarity (dot after L2 normalization for both vectors) 
 def normalized_dot(a: np.ndarray, b: np.ndarray, eps: float = 1e-12) -> np.ndarray:
-    """Compute cosine-like normalized dot similarity.
+    """
+    Compute cosine-like normalized dot similarity.
 
     Supports vector-vector and matrix-vector cases.
     """

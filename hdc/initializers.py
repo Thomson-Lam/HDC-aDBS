@@ -1,4 +1,6 @@
-"""Hypervector initialization strategies for HDC encoders.
+"""
+
+Base Hypervector initialization definitions for HDC encoders.
 
 This module provides:
 - random binary initialization (classical HDC baseline)

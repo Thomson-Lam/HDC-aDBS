@@ -12,6 +12,7 @@ from hdc.readouts import LinearReadout, PrototypeReadout
 
 class TestPrimitives(unittest.TestCase):
     def test_bind_and_bundle_are_bipolar(self) -> None:
+        # Verifies bind math and checks bundled outputs stay in {-1, +1}.
         a = np.array([1, -1, 1, -1], dtype=np.int8)
         b = np.array([1, 1, -1, -1], dtype=np.int8)
         bound = bind(a, b)
@@ -22,6 +23,7 @@ class TestPrimitives(unittest.TestCase):
         self.assertEqual(set(np.unique(bundled).tolist()), {-1, 1})
 
     def test_bipolarize_tie_rule(self) -> None:
+        # Verifies zero entries follow the configured tie-break target (+1 or -1).
         x = np.array([-2.0, 0.0, 3.0])
         self.assertTrue(np.array_equal(bipolarize(x, zero_to=1), np.array([-1, 1, 1])))
         self.assertTrue(
@@ -29,6 +31,7 @@ class TestPrimitives(unittest.TestCase):
         )
 
     def test_normalized_dot_expected_values(self) -> None:
+        # Verifies normalized dot returns +1 for identical vectors and -1 for opposites.
         v = np.array([1, -1, 1, -1], dtype=np.int8)
         self.assertAlmostEqual(float(normalized_dot(v, v)), 1.0, places=12)
         self.assertAlmostEqual(float(normalized_dot(v, -v)), -1.0, places=12)
@@ -36,6 +39,7 @@ class TestPrimitives(unittest.TestCase):
 
 class TestDictionariesAndEncoder(unittest.TestCase):
     def test_dictionary_determinism(self) -> None:
+        # Verifies same config/seed rebuilds identical value and position dictionaries.
         cfg = DictionaryConfig(
             dimension=1000,
             n_bins=8,
@@ -52,6 +56,7 @@ class TestDictionariesAndEncoder(unittest.TestCase):
         self.assertEqual(p1.shape, (128, 1000))
 
     def test_encoder_output_shape_and_domain(self) -> None:
+        # Verifies batch encoding returns expected shape, dtype, and bipolar value domain.
         encoder = WindowEncoder(
             EncoderConfig(
                 dimension=1000,
@@ -70,6 +75,7 @@ class TestDictionariesAndEncoder(unittest.TestCase):
         self.assertEqual(set(np.unique(hvs).tolist()), {-1, 1})
 
     def test_constant_window_is_handled(self) -> None:
+        # Verifies a zero-variance window still encodes into a valid bipolar hypervector.
         encoder = WindowEncoder(
             EncoderConfig(dimension=500, n_bins=8, window_length=128, seed=5)
         )
@@ -81,6 +87,7 @@ class TestDictionariesAndEncoder(unittest.TestCase):
 
 class TestReadouts(unittest.TestCase):
     def test_readout_interfaces_and_sign_behavior(self) -> None:
+        # Verifies both readouts produce class-aligned margins and correctly shaped predictions.
         rng = np.random.default_rng(42)
         d = 1000
         n = 50

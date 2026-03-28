@@ -12,7 +12,7 @@ from .primitives import bind, bundle
 
 @dataclass(frozen=True)
 class EncoderConfig:
-    """Configuration for the HDC window encoder."""
+    """HDC window encoder constructor config"""
 
     dimension: int
     n_bins: int
@@ -21,7 +21,9 @@ class EncoderConfig:
     clip_z: float = 3.0
     seed: int | None = None
 
-
+# the encoder designed for fixed length 1D signal windows 
+# this class encodes simulator output (ODE/LFP trajectories) into hypervectors for 
+# classif.
 class WindowEncoder:
     """Encode fixed-length signal windows into bipolar hypervectors."""
 
@@ -54,7 +56,7 @@ class WindowEncoder:
         return self.config.window_length
 
     def zscore_window(self, window: np.ndarray) -> np.ndarray:
-        """Apply per-window z-score normalization."""
+        """Apply per-window z-score normalization per window."""
         x = np.asarray(window, dtype=np.float64)
         if x.ndim != 1:
             raise ValueError("window must be rank-1")
@@ -69,6 +71,8 @@ class WindowEncoder:
             return np.zeros_like(x)
         return (x - mean) / std
 
+    # quantize is needed because encoder val dict is discrete but window is continuous
+    # we convert each z-scored sample into a bin index so we can get value_dict  from raw float vals
     def quantize(self, z_window: np.ndarray) -> np.ndarray:
         """Quantize z-scored samples to bin indices in [0, n_bins-1]."""
         z = np.asarray(z_window, dtype=np.float64)

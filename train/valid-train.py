@@ -1,4 +1,6 @@
-"""Validator + trainer entrypoint with fixed search settings.
+"""
+
+Validator + trainer entrypoint with fixed search settings. Uses hdc/ definitions.
 
 Usage:
     uv run python train/valid-train.py

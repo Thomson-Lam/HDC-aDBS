@@ -13,6 +13,7 @@ from hdc.training import LinearHDCTrainer, PrototypeHDCTrainer
 
 class TestTrainingLayer(unittest.TestCase):
     def test_prototype_trainer_fit_predict_and_reload(self) -> None:
+        # Verifies prototype trainer can fit/evaluate, persist, reload, and preserve decision scores.
         data = make_dummy_validation_data(seed=909, window_length=128)
         cfg = EncoderConfig(
             dimension=1000,
@@ -36,6 +37,7 @@ class TestTrainingLayer(unittest.TestCase):
             self.assertTrue(np.allclose(s1, s2))
 
     def test_linear_trainer_fit_predict_and_reload(self) -> None:
+        # Verifies linear trainer can fit/evaluate, persist, reload, and preserve decision scores.
         data = make_dummy_validation_data(seed=910, window_length=128)
         cfg = EncoderConfig(
             dimension=1000,

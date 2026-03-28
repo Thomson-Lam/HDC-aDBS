@@ -1,4 +1,7 @@
-"""Readout models for encoded hypervectors."""
+"""
+Readout model layer on top of encoded hypervectors for either using the raw
+hypervectors directly for comparison or building a linear classifier on top of it during training. This would be the 'model' layer equivalent for ML but for HDC.
+"""
 
 from __future__ import annotations
 
@@ -26,9 +29,10 @@ def _validate_xy(x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 
 class BaseReadout(ABC):
-    """Shared interface for HDC readout models.
+    """
+    Shared interface for HDC readout models.
 
-    Convention: label 0 = healthy, label 1 = pathological.
+    Convention: label 0 = healthy, label 1 = pathological/abnormal.
     """
 
     @abstractmethod
@@ -45,7 +49,9 @@ class BaseReadout(ABC):
 
 
 class PrototypeReadout(BaseReadout):
-    """Prototype similarity readout using margin scoring."""
+    """
+    Prototype similarity readout using margin scoring, uses hypervectors directly.
+    """
 
     def __init__(self) -> None:
         self.healthy_prototype: np.ndarray | None = None
@@ -78,7 +84,7 @@ class PrototypeReadout(BaseReadout):
 
 
 class LinearReadout(BaseReadout):
-    """Linear classifier over encoded hypervectors."""
+    """Logistic Regression trained over encoded hypervectors."""
 
     def __init__(self, seed: int | None = None, max_iter: int = 1000) -> None:
         self.seed = seed
@@ -88,12 +94,14 @@ class LinearReadout(BaseReadout):
             max_iter=max_iter,
             solver="liblinear",
         )
-
+    
+    # fitting method for logreg.
     def fit(self, x: np.ndarray, y: np.ndarray) -> "LinearReadout":
         x, y = _validate_xy(x, y)
         self.model.fit(x.astype(np.float64), y)
         return self
 
+    # returns the probability score for classif from the model's raw linear score (margin)
     def decision_function(self, x: np.ndarray) -> np.ndarray:
         x = np.asarray(x)
         if x.ndim == 1:

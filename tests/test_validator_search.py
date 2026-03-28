@@ -11,11 +11,13 @@ from hdc.search.validator import run_validator_search, top_candidates
 
 class TestValidatorSearch(unittest.TestCase):
     def test_fixed_grid_has_expected_candidate_count(self) -> None:
+        # Verifies default search grid expands to the expected number of encoder candidates.
         cfg = SearchConfig()
         specs = cfg.iter_encoder_specs()
         self.assertEqual(len(specs), 12)
 
     def test_search_returns_rows_for_all_readouts(self) -> None:
+        # Verifies validator search evaluates each candidate with both readouts and reports finite metrics.
         cfg = SearchConfig(
             dimensions=(500,),
             bins=(8,),
@@ -33,6 +35,7 @@ class TestValidatorSearch(unittest.TestCase):
         self.assertTrue(all(np.isfinite(row.encoding_ms_per_window) for row in rows))
 
     def test_ranking_and_top_candidates(self) -> None:
+        # Verifies ranking helper returns top-k winners with rank numbering applied.
         cfg = SearchConfig(
             dimensions=(500,),
             bins=(8,),

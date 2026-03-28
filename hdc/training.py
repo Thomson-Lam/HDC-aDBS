@@ -1,4 +1,7 @@
-"""Training layer for HDC classifiers built on encoder primitives and readouts."""
+"""
+Training layer for HDC classifiers built on encoder primitives and readouts.
+Contains training code that uses the model readbout defs and encoder.
+"""
 
 from __future__ import annotations
 
@@ -26,7 +29,8 @@ def _safe_auroc(y_true: np.ndarray, scores: np.ndarray) -> float:
 
 
 class BaseHDCTrainer(ABC):
-    """Base interface for window-level HDC trainers.
+    """
+    Base interface for window-level HDC trainers.
 
     Convention: label 0 = healthy, label 1 = pathological.
     """

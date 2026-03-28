@@ -24,6 +24,7 @@ def _make_dummy_windows(
 
 class TestDummyReproducibility(unittest.TestCase):
     def test_encoder_same_seed_same_hypervectors_random_init(self) -> None:
+        # Verifies random-initialized encoders with the same seed produce identical batch HVs.
         healthy, pathological = _make_dummy_windows(seed=21, n=32, window_length=128)
         windows = np.vstack([healthy, pathological])
 
@@ -43,6 +44,7 @@ class TestDummyReproducibility(unittest.TestCase):
         self.assertTrue(np.array_equal(hv_a, hv_b))
 
     def test_encoder_same_seed_same_hypervectors_rff_init(self) -> None:
+        # Verifies RFF-initialized encoders with the same seed produce identical batch HVs.
         healthy, pathological = _make_dummy_windows(seed=22, n=32, window_length=128)
         windows = np.vstack([healthy, pathological])
 
@@ -62,6 +64,7 @@ class TestDummyReproducibility(unittest.TestCase):
         self.assertTrue(np.array_equal(hv_a, hv_b))
 
     def test_encoder_different_seed_changes_hypervectors(self) -> None:
+        # Verifies changing encoder seed changes encoded hypervectors for the same windows.
         healthy, pathological = _make_dummy_windows(seed=23, n=20, window_length=128)
         windows = np.vstack([healthy, pathological])
 
@@ -90,6 +93,7 @@ class TestDummyReproducibility(unittest.TestCase):
         self.assertFalse(np.array_equal(hv_a, hv_b))
 
     def test_readout_reproducibility_with_fixed_seed(self) -> None:
+        # Verifies prototype and seeded linear readouts fit to the same HVs yield identical parameters/scores.
         healthy, pathological = _make_dummy_windows(seed=30, n=60, window_length=128)
         windows = np.vstack([healthy, pathological])
         y = np.concatenate(
@@ -128,6 +132,7 @@ class TestDummyReproducibility(unittest.TestCase):
         self.assertTrue(np.allclose(scores_a, scores_b))
 
     def test_end_to_end_scores_reproducible(self) -> None:
+        # Verifies full encode+train+score pipeline is deterministic when configs and seeds are fixed.
         healthy_train, path_train = _make_dummy_windows(
             seed=100, n=80, window_length=128
         )

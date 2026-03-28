@@ -20,6 +20,7 @@ class DictionaryConfig:
     seed: int | None = None
 
 
+# helper to make separate seeds from a base seed to prevent identical RNG streams for the same dictionary 
 def _seed_offset(seed: int | None, offset: int) -> int | None:
     if seed is None:
         return None
@@ -58,7 +59,7 @@ def build_position_dictionary(
     initializer = RandomBinaryInitializer(dimension=dimension, seed=seed)
     return initializer.initialize(window_length)
 
-
+# build the dictionaries with different seeds for the hypervectors.
 def build_dictionaries(config: DictionaryConfig) -> tuple[np.ndarray, np.ndarray]:
     """Build value and position dictionaries with deterministic seed offsets."""
     value_seed = _seed_offset(config.seed, 0)
