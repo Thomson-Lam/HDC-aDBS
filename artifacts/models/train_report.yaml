@@ -1,0 +1,16 @@
+prototype:
+  balanced_accuracy: 0.93125
+  auroc: 0.99828125
+linear:
+  balanced_accuracy: 0.996875
+  auroc: 1.0
+encoder_config:
+  dimension: 1000
+  n_bins: 16
+  window_length: 128
+  value_init: rff
+  clip_z: 3.0
+  seed: 123
+model_paths:
+  prototype: artifacts/models/prototype
+  linear: artifacts/models/linear

@@ -26,6 +26,7 @@ from .search import (
     write_results_csv,
     write_results_jsonl,
 )
+from .training import BaseHDCTrainer, LinearHDCTrainer, PrototypeHDCTrainer
 
 __all__ = [
     "BaseHypervectorInitializer",
@@ -55,4 +56,7 @@ __all__ = [
     "top_candidates",
     "write_results_jsonl",
     "write_results_csv",
+    "BaseHDCTrainer",
+    "PrototypeHDCTrainer",
+    "LinearHDCTrainer",
 ]
