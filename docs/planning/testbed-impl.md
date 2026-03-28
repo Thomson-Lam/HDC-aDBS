@@ -45,6 +45,30 @@ We want to know whether our custom detector can do as well as the standard detec
 
 # High-level implementation plan
 
+## Phase 0: Lock the experimental contract
+
+Before building anything else, define the exact signal path and evaluation protocol that every experiment will use.
+
+### What we implement
+
+* controller-visible sampling rate
+* rule for converting variable-step ODE output into a fixed-rate LFP stream
+* causal online filtering choices
+* window length and stride
+* decision cadence
+* stimulation epoch duration and post-stim lockout
+* train/validation/test split policy at the trajectory level, before window extraction
+* threshold calibration policy using validation data only
+
+### Output of this phase
+
+* one reproducible protocol table used by both controllers
+* one dataset policy that prevents leakage
+
+### Why this matters
+
+If the simulator-to-controller interface is underspecified, offline accuracy and online control results are hard to trust.
+
 ## Phase 1: Build the simulated brain
 
 We first need a working mathematical simulation that can reliably produce:
@@ -57,12 +81,14 @@ We first need a working mathematical simulation that can reliably produce:
 * ODE model of the STN-GPe loop, with optional extension to more populations later
 * chunked simulation loop so we can inject control decisions while the sim is running
 * LFP-like population signal extracted from the model
+* fixed-rate resampling pipeline that converts ODE output into the exact stream seen by controllers
 
 ### Output of this phase
 
 * clean healthy signal
 * clean pathological signal
 * PSD plots showing beta-band is stronger in the pathological case
+* validation that the healthy/pathological separation is preserved after the online signal pipeline
 
 ### Why this matters
 
@@ -94,6 +120,8 @@ Before doing any closed-loop control, we test whether the HDC encoder can even d
 
 ### Data used
 
+We generate multiple trajectories and split them by seed/run first, then extract windows within each split.
+
 We test on:
 
 * healthy windows
@@ -102,10 +130,13 @@ We test on:
 * recovery windows
 * moderate-coupling ambiguous windows
 
+We also reserve long healthy-only trajectories for false-trigger evaluation later.
+
 ### Output of this phase
 
 * histograms or plots showing class separation
 * evidence that HDC margin correlates with beta activity
+* held-out results that are not inflated by overlapping-window leakage
 
 ### Why this matters
 
@@ -140,7 +171,11 @@ Now we connect the detectors to the simulator.
 ### Controller A: Classical baseline
 
 * measure beta-band power from the LFP signal
-* stimulate when beta power crosses threshold
+* use the same causal window length and decision cadence as the HDC path
+* smooth beta power over time
+* use on/off hysteresis if possible
+* apply the same stimulation epoch duration and lockout used by the HDC controller
+* stimulate when beta power crosses calibrated thresholds
 
 ### Controller B: HDC controller
 
@@ -151,6 +186,11 @@ Now we connect the detectors to the simulator.
   * turn on above one threshold
   * turn off below a lower threshold
 * apply lockout after each stimulation epoch
+
+### Calibration rule
+
+* calibrate beta thresholds and HDC thresholds on validation trajectories only
+* freeze controller settings before any final test-set or closed-loop comparison
 
 ### Phase Output
 
@@ -182,6 +222,17 @@ We run the same pathological scenario through all 4 strategies:
 * pathological occupancy
 * suppression latency
 
+#### Specificity and robustness
+
+* healthy false-trigger rate
+* number of unnecessary stimulation epochs during healthy-only runs
+
+#### Simulator-native secondary metrics
+
+* synchrony index across model populations
+* burst fraction
+* distance to healthy PSD profile
+
 #### Stimulation efficiency
 
 * total pulses
@@ -196,6 +247,7 @@ We run the same pathological scenario through all 4 strategies:
 
 * final comparison table
 * hero figure for presentation/report
+* matched-controller comparison where the decision statistic is the main difference between methods
 
 ---
 
@@ -306,10 +358,18 @@ Fix:
 Fix:
 
 * use transitional windows
+* split train/validation/test by trajectory before windowing
 * use smoothing + hysteresis
 * inspect recovery behavior carefully
 
-## Risk 4: “lighter weight” claim is not true
+## Risk 4: comparison is unfair between controllers
+
+Fix:
+
+* match windowing, smoothing, hysteresis, epoch duration, and lockout across controllers
+* calibrate thresholds on validation data only
+
+## Risk 5: “lighter weight” claim is not true
 
 Fix:
 
@@ -350,4 +410,3 @@ It may capture richer temporal structure than a simple beta threshold.
 * one simple HDC controller
 * one comparison notebook
 * one final table with metrics
-
