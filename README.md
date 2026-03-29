@@ -22,7 +22,7 @@ This repo is currently in the **simulation + offline HDC core** stage.
 
 - [ ] 3) Run open-loop stimulation sanity gate (formal scripted gate pending)
 
-> TODO: run 3) ! 
+> TODO: run 3) -> 5) -> training HDC
 
 - [x] 4) Build HDC core library
 - [x] 4.5) Build HDC models that call the primitives
@@ -75,7 +75,6 @@ This repo is currently in the **simulation + offline HDC core** stage.
 ## What Is Still Missing (Short List)
 
 - [ ] Transitional subset builders (onset/recovery/moderate/healthy-only holdout)
-- [ ] Open-loop stimulation sanity gate script with pass/fail report
 - [ ] Classical and HDC closed-loop controller state machines with matched mechanics
 - [ ] Final threshold calibration on validation-only and single held-out test report
 

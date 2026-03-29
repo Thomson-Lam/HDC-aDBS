@@ -24,9 +24,10 @@ class TestDataPipeline(unittest.TestCase):
             out_dir = Path(tmpdir) / "dataset"
             cfg = BuildDatasetConfig(
                 seeds=(0, 1),
-                regimes=("healthy", "pathological"),
+                scenarios=("clean_healthy", "clean_pathological"),
                 t_end_ms=1200.0,
                 t_warmup_ms=500.0,
+                recovery_stim_off_ms=900.0,
                 include_state=False,
                 output_dir=str(out_dir),
             )
@@ -84,8 +85,13 @@ class TestDataPipeline(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             out_dir = Path(tmpdir) / "dataset"
             cfg = BuildDatasetConfig(
-                seeds=(0, 1, 2),
-                regimes=("healthy", "pathological"),
+                seeds=(0, 1, 2, 3, 4),
+                scenarios=(
+                    "clean_healthy",
+                    "clean_pathological",
+                    "onset",
+                    "recovery",
+                ),
                 t_end_ms=1200.0,
                 t_warmup_ms=500.0,
                 include_state=False,
@@ -96,6 +102,8 @@ class TestDataPipeline(unittest.TestCase):
 
             self.assertGreater(vdata.train.x.shape[0], 0)
             self.assertGreater(vdata.val_clean.x.shape[0], 0)
+            self.assertGreater(vdata.val_onset.x.shape[0], 0)
+            self.assertGreater(vdata.val_recovery.x.shape[0], 0)
             self.assertEqual(vdata.train.x.shape[1], 128)
             self.assertEqual(vdata.val_clean.x.shape[1], 128)
 
