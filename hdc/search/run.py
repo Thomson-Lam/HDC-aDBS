@@ -45,6 +45,8 @@ def make_dummy_validation_data(
         val_clean=make_split(n_healthy=160, n_path=160, path_gain=1.20),
         val_onset=make_split(n_healthy=120, n_path=120, path_gain=0.70),
         val_recovery=make_split(n_healthy=120, n_path=120, path_gain=0.65),
+        val_moderate=make_split(n_healthy=120, n_path=120, path_gain=0.40),
+        holdout_healthy=make_split(n_healthy=200, n_path=0, path_gain=0.0),
     )
 
 

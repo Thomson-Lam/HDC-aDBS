@@ -1,4 +1,6 @@
-"""LFP surrogate extraction from ODE state.
+"""
+
+LFP surrogate extraction from ODE state.
 
 What is an LFP?
 ---------------

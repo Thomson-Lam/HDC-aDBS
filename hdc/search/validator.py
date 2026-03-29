@@ -32,6 +32,8 @@ class ValidationData:
     val_clean: SplitData
     val_onset: SplitData
     val_recovery: SplitData
+    val_moderate: SplitData
+    holdout_healthy: SplitData
 
 
 @dataclass(frozen=True)
@@ -45,7 +47,9 @@ class SearchResult:
     balanced_accuracy_clean: float
     auroc_onset: float
     auroc_recovery: float
+    auroc_moderate: float
     min_transition_auroc: float
+    healthy_holdout_false_trigger_rate: float
     guardrail_pass: bool
     encoding_ms_per_window: float
     model_bytes: int
@@ -111,7 +115,11 @@ def _score_candidate(
     x_clean, clean_ms = _encode_with_timing(encoder, data.val_clean.x)
     x_onset, onset_ms = _encode_with_timing(encoder, data.val_onset.x)
     x_recovery, recovery_ms = _encode_with_timing(encoder, data.val_recovery.x)
-    mean_encode_ms = float(np.mean([train_ms, clean_ms, onset_ms, recovery_ms]))
+    x_moderate, moderate_ms = _encode_with_timing(encoder, data.val_moderate.x)
+    x_holdout, holdout_ms = _encode_with_timing(encoder, data.holdout_healthy.x)
+    mean_encode_ms = float(
+        np.mean([train_ms, clean_ms, onset_ms, recovery_ms, moderate_ms, holdout_ms])
+    )
 
     results: list[SearchResult] = []
     for readout_name in cfg.readouts:
@@ -122,12 +130,20 @@ def _score_candidate(
         clean_pred = model.predict(x_clean)
         onset_scores = model.decision_function(x_onset)
         recovery_scores = model.decision_function(x_recovery)
+        moderate_scores = model.decision_function(x_moderate)
+        holdout_pred = model.predict(x_holdout)
 
         balanced_acc = float(balanced_accuracy_score(data.val_clean.y, clean_pred))
         onset_auroc = _safe_auroc(data.val_onset.y, onset_scores)
         recovery_auroc = _safe_auroc(data.val_recovery.y, recovery_scores)
+        moderate_auroc = _safe_auroc(data.val_moderate.y, moderate_scores)
         min_transition = float(np.nanmin(np.array([onset_auroc, recovery_auroc])))
-        guardrail_pass = bool(min_transition >= cfg.min_guardrail_auroc)
+        holdout_false_trigger_rate = float(np.mean(holdout_pred == 1))
+        guardrail_pass = bool(
+            min_transition >= cfg.min_guardrail_auroc
+            and moderate_auroc >= cfg.min_moderate_auroc
+            and holdout_false_trigger_rate <= cfg.max_holdout_false_trigger_rate
+        )
         model_bytes = _estimate_model_bytes(readout_name, model)
 
         results.append(
@@ -139,7 +155,9 @@ def _score_candidate(
                 balanced_accuracy_clean=balanced_acc,
                 auroc_onset=onset_auroc,
                 auroc_recovery=recovery_auroc,
+                auroc_moderate=moderate_auroc,
                 min_transition_auroc=min_transition,
+                healthy_holdout_false_trigger_rate=holdout_false_trigger_rate,
                 guardrail_pass=guardrail_pass,
                 encoding_ms_per_window=mean_encode_ms,
                 model_bytes=model_bytes,

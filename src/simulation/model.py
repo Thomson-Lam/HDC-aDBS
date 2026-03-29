@@ -1,4 +1,5 @@
-"""STN-GPe ODE right-hand side (Terman & Rubin 2002).
+"""
+STN-GPe ODE right-hand side (Terman & Rubin 2002).
 
 This file defines stn_gpe_rhs(), the function passed to scipy's solve_ivp.
 It computes the time derivative dy/dt for the full network state vector y.
