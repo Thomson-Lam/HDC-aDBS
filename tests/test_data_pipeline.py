@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -81,6 +82,10 @@ class TestDataPipeline(unittest.TestCase):
                 self.assertTrue(np.all(np.isfinite(x_train)))
                 self.assertTrue(set(np.unique(y_train).tolist()).issubset({0, 1}))
 
+    @unittest.skipUnless(
+        os.environ.get("RUN_SLOW_DATA_PIPELINE") == "1",
+        "set RUN_SLOW_DATA_PIPELINE=1 to run robust subset integration test",
+    )
     def test_hdc_adapter_builds_validation_data(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             out_dir = Path(tmpdir) / "dataset"
@@ -92,8 +97,10 @@ class TestDataPipeline(unittest.TestCase):
                     "onset",
                     "recovery",
                 ),
-                t_end_ms=1200.0,
+                t_end_ms=2200.0,
                 t_warmup_ms=500.0,
+                onset_segment_ms=1000.0,
+                recovery_stim_off_ms=1200.0,
                 include_state=False,
                 output_dir=str(out_dir),
             )

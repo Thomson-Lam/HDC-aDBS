@@ -39,7 +39,7 @@ class BuildDatasetConfig:
     t_end_ms: float = 3000.0
     t_warmup_ms: float = 500.0
     onset_segment_ms: float = 1500.0
-    recovery_stim_off_ms: float = 1700.0
+    recovery_stim_off_ms: float | None = None
     recovery_stim_amplitude: float = 8.0
     pulse_frequency_hz: float = 130.0
     pulse_width_ms: float = 1.0
@@ -52,6 +52,74 @@ class BuildDatasetConfig:
 
 def _trajectory_id(scenario: str, seed: int) -> str:
     return f"{scenario}_seed{seed}"
+
+
+def _resolved_recovery_stim_off_ms(cfg: BuildDatasetConfig) -> float:
+    if cfg.recovery_stim_off_ms is not None:
+        return float(cfg.recovery_stim_off_ms)
+    # Default to midpoint of the post-warmup interval.
+    return float(cfg.t_warmup_ms + 0.5 * (cfg.t_end_ms - cfg.t_warmup_ms))
+
+
+def _validate_build_config(cfg: BuildDatasetConfig) -> None:
+    allowed_scenarios = {
+        "clean_healthy",
+        "clean_pathological",
+        "moderate",
+        "onset",
+        "recovery",
+        "healthy_holdout",
+    }
+
+    if len(cfg.seeds) == 0:
+        raise ValueError("seeds must be non-empty")
+    if len(cfg.scenarios) == 0:
+        raise ValueError("scenarios must be non-empty")
+    unknown = set(cfg.scenarios) - allowed_scenarios
+    if unknown:
+        raise ValueError(f"Unsupported scenario(s): {sorted(unknown)}")
+
+    if cfg.t_end_ms <= cfg.t_warmup_ms:
+        raise ValueError("t_end_ms must be greater than t_warmup_ms")
+    if cfg.onset_segment_ms <= cfg.t_warmup_ms:
+        raise ValueError("onset_segment_ms must be greater than t_warmup_ms")
+    if cfg.healthy_holdout_t_end_ms <= cfg.t_warmup_ms:
+        raise ValueError("healthy_holdout_t_end_ms must be greater than t_warmup_ms")
+
+    if cfg.pulse_frequency_hz <= 0.0:
+        raise ValueError("pulse_frequency_hz must be > 0")
+    if cfg.pulse_width_ms <= 0.0:
+        raise ValueError("pulse_width_ms must be > 0")
+
+    if cfg.transition_band_half_width_ms <= 0.0:
+        raise ValueError("transition_band_half_width_ms must be > 0")
+
+    if "recovery" in set(cfg.scenarios):
+        stim_off = _resolved_recovery_stim_off_ms(cfg)
+        if stim_off <= cfg.t_warmup_ms:
+            raise ValueError(
+                "recovery_stim_off_ms must be greater than t_warmup_ms "
+                f"(got stim_off={stim_off}, warmup={cfg.t_warmup_ms})"
+            )
+        if stim_off >= cfg.t_end_ms:
+            raise ValueError(
+                "recovery_stim_off_ms must be less than t_end_ms "
+                f"(got stim_off={stim_off}, t_end={cfg.t_end_ms})"
+            )
+
+        aligned = stim_off - cfg.t_warmup_ms
+        post_warmup_duration = cfg.t_end_ms - cfg.t_warmup_ms
+        if aligned <= cfg.transition_band_half_width_ms:
+            raise ValueError(
+                "recovery transition occurs too early after warmup for labeled windows; "
+                f"aligned={aligned} ms, half_width={cfg.transition_band_half_width_ms} ms"
+            )
+        if aligned >= (post_warmup_duration - cfg.transition_band_half_width_ms):
+            raise ValueError(
+                "recovery transition occurs too late in trajectory for labeled windows; "
+                f"aligned={aligned} ms, post_warmup_duration={post_warmup_duration} ms, "
+                f"half_width={cfg.transition_band_half_width_ms} ms"
+            )
 
 
 def _make_regime_config(
@@ -163,6 +231,7 @@ def _build_onset_trajectory(seed: int, cfg: BuildDatasetConfig) -> dict[str, obj
 
 
 def _build_recovery_trajectory(seed: int, cfg: BuildDatasetConfig) -> dict[str, object]:
+    stim_off_ms = _resolved_recovery_stim_off_ms(cfg)
     pulse_fn = make_pulse_train_stim(
         amplitude=cfg.recovery_stim_amplitude,
         frequency_hz=cfg.pulse_frequency_hz,
@@ -171,7 +240,7 @@ def _build_recovery_trajectory(seed: int, cfg: BuildDatasetConfig) -> dict[str, 
 
     # t is in ms. stimulation is on before stim_off, then off.
     def recovery_stim_fn(t_ms: float) -> float:
-        if t_ms < cfg.recovery_stim_off_ms:
+        if t_ms < stim_off_ms:
             return float(pulse_fn(t_ms))
         return 0.0
 
@@ -180,7 +249,7 @@ def _build_recovery_trajectory(seed: int, cfg: BuildDatasetConfig) -> dict[str, 
 
     t = _normalize_timebase(result["t"])
     lfp = np.asarray(result["lfp"], dtype=np.float64)
-    stim_off_aligned = max(0.0, float(cfg.recovery_stim_off_ms - cfg.t_warmup_ms))
+    stim_off_aligned = max(0.0, float(stim_off_ms - cfg.t_warmup_ms))
 
     return {
         "scenario": "recovery",
@@ -222,6 +291,7 @@ def _build_healthy_holdout_trajectory(
 
 def build_static_dataset(cfg: BuildDatasetConfig) -> Path:
     """Generate trajectories, save NPZ files, and write a manifest CSV."""
+    _validate_build_config(cfg)
     out_dir = Path(cfg.output_dir)
     traj_dir = out_dir / "trajectories"
     out_dir.mkdir(parents=True, exist_ok=True)

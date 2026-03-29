@@ -100,6 +100,15 @@ def load_validation_data_from_static(
         allowed_subsets={"recovery"},
     )
 
+    val_subset_counts = (
+        val_meta["subset"].value_counts().to_dict() if len(val_meta) > 0 else {}
+    )
+    val_scenario_counts = (
+        split_df[split_df["split"] == "val"]["scenario"].value_counts().to_dict()
+        if "scenario" in split_df.columns
+        else {}
+    )
+
     if x_train.shape[0] == 0 or x_val_clean.shape[0] == 0:
         raise RuntimeError(
             "Static dataset produced empty train/clean-val windows. "
@@ -107,11 +116,13 @@ def load_validation_data_from_static(
         )
     if x_val_onset.shape[0] == 0:
         raise RuntimeError(
-            "Validation onset subset is empty; robust subset generation failed"
+            "Validation onset subset is empty; robust subset generation failed. "
+            f"val_scenarios={val_scenario_counts}, val_subsets={val_subset_counts}"
         )
     if x_val_recovery.shape[0] == 0:
         raise RuntimeError(
-            "Validation recovery subset is empty; robust subset generation failed"
+            "Validation recovery subset is empty; robust subset generation failed. "
+            f"val_scenarios={val_scenario_counts}, val_subsets={val_subset_counts}"
         )
 
     return ValidationData(
