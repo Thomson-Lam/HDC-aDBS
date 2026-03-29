@@ -1,0 +1,149 @@
+timestamp_utc: '2026-03-29T19:26:21.133785+00:00'
+data_source: artifacts/datasets/static_v1
+artifacts:
+  freeze_record: artifacts/encoder_search/freeze_record.yaml
+  search_leaderboard: artifacts/encoder_search/leaderboard.csv
+  search_results: artifacts/encoder_search/results.jsonl
+  train_report: artifacts/models/train_report.yaml
+guardrail_thresholds:
+  min_transition_auroc: 0.6
+  min_moderate_auroc: 0.55
+  max_holdout_false_trigger_rate: 0.4
+selected_config:
+  dimension: 1000
+  n_bins: 16
+  value_init: rff
+  readout: linear
+  clip_z: 3.0
+  seed: 123
+selected_metrics:
+  balanced_accuracy_clean: 1.0
+  auroc_onset: 0.9950694444444445
+  auroc_recovery: 0.989375
+  min_transition_auroc: 0.989375
+  encoding_ms_per_window: 0.06474925142457424
+  model_bytes: 8008
+  rank: 1
+split_scenario_trajectory_counts:
+- split: holdout
+  scenario: healthy_holdout
+  n_trajectories: 5
+- split: test
+  scenario: clean_healthy
+  n_trajectories: 1
+- split: test
+  scenario: clean_pathological
+  n_trajectories: 1
+- split: test
+  scenario: moderate
+  n_trajectories: 1
+- split: test
+  scenario: onset
+  n_trajectories: 1
+- split: test
+  scenario: recovery
+  n_trajectories: 1
+- split: train
+  scenario: clean_healthy
+  n_trajectories: 3
+- split: train
+  scenario: clean_pathological
+  n_trajectories: 3
+- split: train
+  scenario: moderate
+  n_trajectories: 3
+- split: train
+  scenario: onset
+  n_trajectories: 3
+- split: train
+  scenario: recovery
+  n_trajectories: 3
+- split: val
+  scenario: clean_healthy
+  n_trajectories: 1
+- split: val
+  scenario: clean_pathological
+  n_trajectories: 1
+- split: val
+  scenario: moderate
+  n_trajectories: 1
+- split: val
+  scenario: onset
+  n_trajectories: 1
+- split: val
+  scenario: recovery
+  n_trajectories: 1
+window_coverage:
+  train:
+    n_windows: 252
+    label_counts:
+      '0': 126
+      '1': 126
+  val_clean:
+    n_windows: 84
+    label_counts:
+      '0': 42
+      '1': 42
+  val_onset:
+    n_windows: 16
+    label_counts:
+      '0': 8
+      '1': 8
+  val_recovery:
+    n_windows: 17
+    label_counts:
+      '0': 9
+      '1': 8
+  val_moderate:
+    n_windows: 126
+    label_counts:
+      '0': 42
+      '1': 84
+  holdout_healthy:
+    n_windows: 520
+    label_counts:
+      '0': 520
+reported_metrics:
+  prototype:
+    balanced_accuracy: 0.6190476190476191
+    auroc: 0.6057256235827664
+  linear:
+    balanced_accuracy: 0.44047619047619047
+    auroc: 0.49603174603174605
+  prototype_onset:
+    balanced_accuracy: 0.5625
+    auroc: 0.7734375
+  linear_onset:
+    balanced_accuracy: 0.625
+    auroc: 0.828125
+  prototype_recovery:
+    balanced_accuracy: 0.4861111111111111
+    auroc: 0.5
+  linear_recovery:
+    balanced_accuracy: 0.4305555555555556
+    auroc: 0.6527777777777778
+  prototype_moderate:
+    balanced_accuracy: 0.5595238095238095
+    auroc: 0.5734126984126985
+  linear_moderate:
+    balanced_accuracy: 0.47619047619047616
+    auroc: 0.49433106575963726
+  prototype_holdout_false_trigger_rate: 0.41923076923076924
+  linear_holdout_false_trigger_rate: 0.40576923076923077
+  prototype_test:
+    balanced_accuracy: 0.6428571428571428
+    auroc: 0.6663832199546484
+  linear_test:
+    balanced_accuracy: 0.5952380952380952
+    auroc: 0.5992063492063492
+  encoder_config:
+    dimension: 1000
+    n_bins: 16
+    window_length: 128
+    value_init: rff
+    clip_z: 3.0
+    seed: 123
+  model_paths:
+    prototype: artifacts/models/prototype
+    linear: artifacts/models/linear
+  data_source: artifacts/datasets/static_v1

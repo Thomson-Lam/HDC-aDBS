@@ -1,0 +1,25 @@
+seeds:
+- 0
+- 1
+- 2
+- 3
+- 4
+scenarios:
+- clean_healthy
+- clean_pathological
+- moderate
+- onset
+- recovery
+- healthy_holdout
+t_end_ms: 3000.0
+t_warmup_ms: 500.0
+onset_segment_ms: 1500.0
+recovery_stim_off_ms: null
+recovery_stim_amplitude: 8.0
+pulse_frequency_hz: 130.0
+pulse_width_ms: 1.0
+moderate_g_gaba: 0.9
+healthy_holdout_t_end_ms: 6000.0
+transition_band_half_width_ms: 400.0
+include_state: false
+output_dir: artifacts/datasets/static_v1

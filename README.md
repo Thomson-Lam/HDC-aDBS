@@ -72,7 +72,7 @@ This repo is currently in the **simulation + offline HDC core** stage.
 
 ## What Is Still Missing (Short List)
 
-- [ ] Classical and HDC closed-loop controller state machines with matched mechanics -- improve the metrics! 
+- [x] Classical and HDC closed-loop controller state machines with matched mechanics -- improve the metrics! 
 - [ ] Final threshold calibration on validation-only and single held-out test report
 
 ## Quickstart
@@ -161,6 +161,15 @@ brain/
 │       ├── config.py # set config for search space here 
 │       ├── validator.py # core grid search code
 │       └── run.py # entry script called by ../train/valid-train.py
+├── controllers/
+│   ├── __init__.py
+│   ├── base.py # shared controller state machine + metrics
+│   ├── beta_controller.py # beta-threshold adaptive controller
+│   ├── hdc_controller.py # HDC margin-based adaptive controller
+│   ├── waveform.py # pulse-train waveform primitives (Option B)
+│   ├── eval_metrics.py # pure closed-loop benchmark metrics
+│   ├── run_controller.py # closed-loop ODE harness
+│   └── run_closedloop_benchmark.py # 4-condition benchmark runner
 ├── train/
 │   ├── valid-train.py # main training code for direct HDC and logreg over HDC 
 │   ├── build-static-dataset.py # script calls src/data/build_static_dataset.py
@@ -181,6 +190,11 @@ brain/
 │   │   ├── linear/
 │   │   ├── train_report.yaml
 │   │   └── training_audit.yaml
+│   ├── closed_loop/ # closed-loop benchmark outputs
+│   │   ├── per_run_metrics.csv
+│   │   ├── summary_by_condition.csv
+│   │   ├── summary.yaml
+│   │   └── run_manifest.yaml
 │   └── open_loop_sanity/ # open loop controller validation for ODE model
 │       ├── summary.yaml
 │       ├── per_seed_metrics.csv
@@ -188,6 +202,8 @@ brain/
 │       ├── beta_summary.png
 │       └── open_loop_sanity.log
 ├── tests/ # tests for core code 
+│   ├── test_controllers.py
+│   ├── test_closedloop_metrics.py
 │   ├── test_simulation.py
 │   ├── test_open_loop_sanity.py
 │   ├── test_hdc_core.py

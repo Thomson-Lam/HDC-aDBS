@@ -1,9 +1,35 @@
 prototype:
-  balanced_accuracy: 0.93125
-  auroc: 0.99828125
+  balanced_accuracy: 0.6190476190476191
+  auroc: 0.6057256235827664
 linear:
-  balanced_accuracy: 0.996875
-  auroc: 1.0
+  balanced_accuracy: 0.44047619047619047
+  auroc: 0.49603174603174605
+prototype_onset:
+  balanced_accuracy: 0.5625
+  auroc: 0.7734375
+linear_onset:
+  balanced_accuracy: 0.625
+  auroc: 0.828125
+prototype_recovery:
+  balanced_accuracy: 0.4861111111111111
+  auroc: 0.5
+linear_recovery:
+  balanced_accuracy: 0.4305555555555556
+  auroc: 0.6527777777777778
+prototype_moderate:
+  balanced_accuracy: 0.5595238095238095
+  auroc: 0.5734126984126985
+linear_moderate:
+  balanced_accuracy: 0.47619047619047616
+  auroc: 0.49433106575963726
+prototype_holdout_false_trigger_rate: 0.41923076923076924
+linear_holdout_false_trigger_rate: 0.40576923076923077
+prototype_test:
+  balanced_accuracy: 0.6428571428571428
+  auroc: 0.6663832199546484
+linear_test:
+  balanced_accuracy: 0.5952380952380952
+  auroc: 0.5992063492063492
 encoder_config:
   dimension: 1000
   n_bins: 16
@@ -14,3 +40,4 @@ encoder_config:
 model_paths:
   prototype: artifacts/models/prototype
   linear: artifacts/models/linear
+data_source: artifacts/datasets/static_v1
