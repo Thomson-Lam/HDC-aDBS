@@ -26,9 +26,7 @@ This repo is currently in the **simulation + offline HDC core** stage.
 
 - [x] 4) Build HDC core library
 - [x] 4.5) Build HDC models that call the primitives
-
-- [ ] 5) Build dataset + split layer (core done; transitional subsets pending)
-
+- [x] 5) Build dataset + split layer with transitional subsets for more realistic data (core done)
 - [x] 6) Build offline validator + ranking engine (wired to static ODE windows)
 
 - [ ] 7) Run selection funnel + freeze final HDC setup (partial: freeze record exists)
@@ -74,9 +72,10 @@ This repo is currently in the **simulation + offline HDC core** stage.
 
 ## What Is Still Missing (Short List)
 
-- [ ] Transitional subset builders (onset/recovery/moderate/healthy-only holdout)
-- [ ] Classical and HDC closed-loop controller state machines with matched mechanics
+- [ ] Classical and HDC closed-loop controller state machines with matched mechanics - OLIVER 
 - [ ] Final threshold calibration on validation-only and single held-out test report
+
+
 
 ## Quickstart
 
@@ -119,6 +118,7 @@ Outputs:
 
 - `train/valid-train.py` now uses static ODE trajectories/windows from `artifacts/datasets/static_v1`.
 - If dataset manifests are missing, they are built/prepared automatically before validator/training.
+- Validator guardrails now include onset, recovery, moderate, and healthy holdout false-trigger checks.
 
 ## Produced results 
 

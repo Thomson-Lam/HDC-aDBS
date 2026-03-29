@@ -94,8 +94,10 @@ class TestDataPipeline(unittest.TestCase):
                 scenarios=(
                     "clean_healthy",
                     "clean_pathological",
+                    "moderate",
                     "onset",
                     "recovery",
+                    "healthy_holdout",
                 ),
                 t_end_ms=2200.0,
                 t_warmup_ms=500.0,

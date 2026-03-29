@@ -71,7 +71,9 @@ def ensure_freeze_record(cfg: SearchConfig, data: ValidationData) -> dict:
             "balanced_accuracy_clean": winner.balanced_accuracy_clean,
             "auroc_onset": winner.auroc_onset,
             "auroc_recovery": winner.auroc_recovery,
+            "auroc_moderate": winner.auroc_moderate,
             "min_transition_auroc": winner.min_transition_auroc,
+            "healthy_holdout_false_trigger_rate": winner.healthy_holdout_false_trigger_rate,
             "encoding_ms_per_window": winner.encoding_ms_per_window,
             "model_bytes": winner.model_bytes,
             "rank": winner.rank,
@@ -104,6 +106,20 @@ def train_both_methods(freeze: dict, cfg: SearchConfig, data: ValidationData) ->
 
     proto_metrics = prototype.evaluate(data.val_clean.x, data.val_clean.y)
     linear_metrics = linear.evaluate(data.val_clean.x, data.val_clean.y)
+    proto_onset_metrics = prototype.evaluate(data.val_onset.x, data.val_onset.y)
+    linear_onset_metrics = linear.evaluate(data.val_onset.x, data.val_onset.y)
+    proto_recovery_metrics = prototype.evaluate(
+        data.val_recovery.x, data.val_recovery.y
+    )
+    linear_recovery_metrics = linear.evaluate(data.val_recovery.x, data.val_recovery.y)
+    proto_moderate_metrics = prototype.evaluate(
+        data.val_moderate.x, data.val_moderate.y
+    )
+    linear_moderate_metrics = linear.evaluate(data.val_moderate.x, data.val_moderate.y)
+    proto_holdout_pred = prototype.predict(data.holdout_healthy.x)
+    linear_holdout_pred = linear.predict(data.holdout_healthy.x)
+    proto_holdout_false_trigger_rate = float(np.mean(proto_holdout_pred == 1))
+    linear_holdout_false_trigger_rate = float(np.mean(linear_holdout_pred == 1))
 
     # Optional held-out view from static split test windows (not used for selection).
     x_train_split, y_train_split, x_test_split, y_test_split = (
@@ -143,6 +159,14 @@ def train_both_methods(freeze: dict, cfg: SearchConfig, data: ValidationData) ->
     report = {
         "prototype": proto_metrics,
         "linear": linear_metrics,
+        "prototype_onset": proto_onset_metrics,
+        "linear_onset": linear_onset_metrics,
+        "prototype_recovery": proto_recovery_metrics,
+        "linear_recovery": linear_recovery_metrics,
+        "prototype_moderate": proto_moderate_metrics,
+        "linear_moderate": linear_moderate_metrics,
+        "prototype_holdout_false_trigger_rate": proto_holdout_false_trigger_rate,
+        "linear_holdout_false_trigger_rate": linear_holdout_false_trigger_rate,
         "prototype_test": proto_test_metrics,
         "linear_test": linear_test_metrics,
         "encoder_config": asdict(encoder_config),

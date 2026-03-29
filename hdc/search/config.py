@@ -29,6 +29,8 @@ class SearchConfig:
     clip_z: float = 3.0
     base_seed: int = 123
     min_guardrail_auroc: float = 0.60
+    min_moderate_auroc: float = 0.55
+    max_holdout_false_trigger_rate: float = 0.40
     top_k: int = 3
 
     def iter_encoder_specs(self) -> list[EncoderSearchSpec]:

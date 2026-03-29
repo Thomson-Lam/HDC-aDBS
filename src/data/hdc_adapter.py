@@ -43,10 +43,34 @@ def ensure_static_dataset_ready(dataset_dir: str | Path) -> Path:
     """
     dataset_path = Path(dataset_dir)
     manifest_path = dataset_path / "manifest.csv"
+    required_scenarios = {
+        "clean_healthy",
+        "clean_pathological",
+        "moderate",
+        "onset",
+        "recovery",
+        "healthy_holdout",
+    }
+
+    should_rebuild = False
 
     if not manifest_path.exists():
+        should_rebuild = True
+    else:
+        manifest = pd.read_csv(manifest_path)
+        if "scenario" not in manifest.columns:
+            should_rebuild = True
+        else:
+            present = set(manifest["scenario"].astype(str).unique().tolist())
+            if not required_scenarios.issubset(present):
+                should_rebuild = True
+
+    if should_rebuild:
         cfg = BuildDatasetConfig(output_dir=str(dataset_path))
         build_static_dataset(cfg)
+        split_path = dataset_path / "manifest_with_splits.csv"
+        if split_path.exists():
+            split_path.unlink()
 
     _read_or_create_split_manifest(dataset_path)
     return dataset_path
@@ -99,6 +123,39 @@ def load_validation_data_from_static(
         val_meta,
         allowed_subsets={"recovery"},
     )
+    x_val_moderate_only, y_val_moderate_only, _ = filter_windows_by_subset(
+        x_val_all,
+        y_val_all,
+        val_meta,
+        allowed_subsets={"moderate"},
+    )
+    x_val_clean_for_mod, y_val_clean_for_mod, _ = filter_windows_by_subset(
+        x_val_all,
+        y_val_all,
+        val_meta,
+        allowed_subsets={"clean"},
+    )
+
+    # Moderate validation set: clean healthy/pathological context + moderate windows.
+    if x_val_moderate_only.shape[0] > 0 and x_val_clean_for_mod.shape[0] > 0:
+        x_val_moderate = np.vstack([x_val_clean_for_mod, x_val_moderate_only])
+        y_val_moderate = np.concatenate([y_val_clean_for_mod, y_val_moderate_only])
+    else:
+        x_val_moderate = x_val_moderate_only
+        y_val_moderate = y_val_moderate_only
+
+    x_holdout_all, y_holdout_all, holdout_meta = build_window_dataset_for_split(
+        dataset_dir=dataset_path,
+        manifest_with_split=split_df,
+        split="holdout",
+        window_cfg=window_cfg,
+    )
+    x_holdout_healthy, y_holdout_healthy, _ = filter_windows_by_subset(
+        x_holdout_all,
+        y_holdout_all,
+        holdout_meta,
+        allowed_subsets={"healthy_holdout"},
+    )
 
     val_subset_counts = (
         val_meta["subset"].value_counts().to_dict() if len(val_meta) > 0 else {}
@@ -124,6 +181,21 @@ def load_validation_data_from_static(
             "Validation recovery subset is empty; robust subset generation failed. "
             f"val_scenarios={val_scenario_counts}, val_subsets={val_subset_counts}"
         )
+    if x_val_moderate.shape[0] == 0:
+        raise RuntimeError(
+            "Validation moderate subset is empty; robust subset generation failed. "
+            f"val_scenarios={val_scenario_counts}, val_subsets={val_subset_counts}"
+        )
+    if x_holdout_healthy.shape[0] == 0:
+        holdout_subset_counts = (
+            holdout_meta["subset"].value_counts().to_dict()
+            if len(holdout_meta) > 0
+            else {}
+        )
+        raise RuntimeError(
+            "Healthy holdout subset is empty; robust subset generation failed. "
+            f"holdout_subsets={holdout_subset_counts}"
+        )
 
     return ValidationData(
         train=SplitData(x=np.asarray(x_train), y=np.asarray(y_train)),
@@ -132,6 +204,14 @@ def load_validation_data_from_static(
         val_recovery=SplitData(
             x=np.asarray(x_val_recovery),
             y=np.asarray(y_val_recovery),
+        ),
+        val_moderate=SplitData(
+            x=np.asarray(x_val_moderate),
+            y=np.asarray(y_val_moderate),
+        ),
+        holdout_healthy=SplitData(
+            x=np.asarray(x_holdout_healthy),
+            y=np.asarray(y_holdout_healthy),
         ),
     )
 
