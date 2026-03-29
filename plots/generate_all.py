@@ -17,6 +17,9 @@ from plots.plot_closedloop_metric_by_condition import (
 from plots.plot_offline_model_performance import generate as generate_offline_perf
 from plots.plot_overfit_gap import generate as generate_overfit_gap
 from plots.plot_overfit_tradeoff import generate as generate_overfit_tradeoff
+from plots.plot_presentation_hdc_vs_beta import (
+    generate as generate_presentation_hdc_vs_beta,
+)
 from plots.plot_search_guardrail_tradeoff import generate as generate_search_guardrails
 from plots.plot_search_heatmap import generate as generate_search_heatmap
 from plots.plot_search_speed_accuracy import generate as generate_search_speed
@@ -42,6 +45,7 @@ def main() -> None:
         generate_overfit_tradeoff,
         generate_overfit_gap,
         generate_closedloop_latency,
+        generate_presentation_hdc_vs_beta,
     ):
         out = fn(out_dir)
         if out is not None:
