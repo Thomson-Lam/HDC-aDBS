@@ -105,8 +105,8 @@ def _initial_conditions(config: SimConfig, rng: np.random.Generator) -> np.ndarr
 # Resampling
 # ---------------------------------------------------------------------------
 
-def _resample_to_fs(t_raw: np.ndarray, y_raw: np.ndarray, fs: float,
-                    t_grid: np.ndarray | None = None):
+def resample_to_fs(t_raw: np.ndarray, y_raw: np.ndarray, fs: float,
+                   t_grid: np.ndarray | None = None):
     """
     Interpolate variable-step ODE output onto a uniform time grid at fs Hz.
 
@@ -146,6 +146,10 @@ def _resample_to_fs(t_raw: np.ndarray, y_raw: np.ndarray, fs: float,
     y_uniform = f(t_grid)        # shape (n_state, n_samples)
 
     return t_grid, y_uniform.T   # transpose to (n_samples, n_state)
+
+
+# Backward-compatible alias — internal code that still calls _resample_to_fs will work.
+_resample_to_fs = resample_to_fs
 
 
 # ---------------------------------------------------------------------------
@@ -269,7 +273,7 @@ def run_trajectory(
     # sol.t : (n_raw,)           — variable-step time points
     # sol.y : (n_state, n_raw)   — state at each time point (scipy convention)
 
-    t_uniform, y_uniform = _resample_to_fs(sol.t, sol.y, config.fs)
+    t_uniform, y_uniform = resample_to_fs(sol.t, sol.y, config.fs)
     lfp_full = extract_lfp(y_uniform, config)
 
     # Discard warmup transient
@@ -383,7 +387,7 @@ def run_chunked(
         n_last       = int(np.ceil((t_b - config.t_start) / dt_ms)) - 1
         t_chunk_grid = config.t_start + np.arange(n_first, n_last + 1) * dt_ms
 
-        t_c, y_c = _resample_to_fs(sol.t, sol.y, config.fs, t_grid=t_chunk_grid)
+        t_c, y_c = resample_to_fs(sol.t, sol.y, config.fs, t_grid=t_chunk_grid)
 
         t_parts.append(t_c)
         y_parts.append(y_c)
