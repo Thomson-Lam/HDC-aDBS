@@ -10,6 +10,11 @@ from .static_dataset import (
     load_trajectory,
     vet_dataset,
 )
+from .hdc_adapter import (
+    ensure_static_dataset_ready,
+    load_train_and_test_windows,
+    load_validation_data_from_static,
+)
 
 __all__ = [
     "BuildDatasetConfig",
@@ -21,4 +26,7 @@ __all__ = [
     "vet_dataset",
     "assign_trajectory_splits",
     "extract_windows",
+    "ensure_static_dataset_ready",
+    "load_validation_data_from_static",
+    "load_train_and_test_windows",
 ]

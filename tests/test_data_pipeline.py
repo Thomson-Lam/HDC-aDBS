@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from src.data.build_static_dataset import BuildDatasetConfig, build_static_dataset
+from src.data.hdc_adapter import load_validation_data_from_static
 from src.data.static_dataset import (
     SplitConfig,
     WindowingConfig,
@@ -78,6 +79,25 @@ class TestDataPipeline(unittest.TestCase):
             if x_train.shape[0] > 0:
                 self.assertTrue(np.all(np.isfinite(x_train)))
                 self.assertTrue(set(np.unique(y_train).tolist()).issubset({0, 1}))
+
+    def test_hdc_adapter_builds_validation_data(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_dir = Path(tmpdir) / "dataset"
+            cfg = BuildDatasetConfig(
+                seeds=(0, 1, 2),
+                regimes=("healthy", "pathological"),
+                t_end_ms=1200.0,
+                t_warmup_ms=500.0,
+                include_state=False,
+                output_dir=str(out_dir),
+            )
+            build_static_dataset(cfg)
+            vdata = load_validation_data_from_static(out_dir)
+
+            self.assertGreater(vdata.train.x.shape[0], 0)
+            self.assertGreater(vdata.val_clean.x.shape[0], 0)
+            self.assertEqual(vdata.train.x.shape[1], 128)
+            self.assertEqual(vdata.val_clean.x.shape[1], 128)
 
 
 if __name__ == "__main__":

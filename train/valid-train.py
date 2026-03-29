@@ -21,28 +21,34 @@ if str(ROOT) not in sys.path:
 
 from hdc.encoder import EncoderConfig
 from hdc.search.config import SearchConfig
-from hdc.search.run import make_dummy_validation_data
 from hdc.search.validator import (
+    ValidationData,
     run_validator_search,
     top_candidates,
     write_results_csv,
     write_results_jsonl,
 )
 from hdc.training import LinearHDCTrainer, PrototypeHDCTrainer
+from src.data.hdc_adapter import (
+    ensure_static_dataset_ready,
+    load_train_and_test_windows,
+    load_validation_data_from_static,
+)
+from src.data.static_dataset import WindowingConfig
 
 
 ARTIFACT_ROOT = Path("artifacts")
 SEARCH_DIR = ARTIFACT_ROOT / "encoder_search"
 FREEZE_PATH = SEARCH_DIR / "freeze_record.yaml"
 MODELS_DIR = ARTIFACT_ROOT / "models"
+DATASET_DIR = ARTIFACT_ROOT / "datasets" / "static_v1"
 
 
-def ensure_freeze_record(cfg: SearchConfig) -> dict:
+def ensure_freeze_record(cfg: SearchConfig, data: ValidationData) -> dict:
     """Load frozen selection or run validator search to create it."""
     if FREEZE_PATH.exists():
         return yaml.safe_load(FREEZE_PATH.read_text(encoding="utf-8"))
 
-    data = make_dummy_validation_data(window_length=cfg.window_length)
     results = run_validator_search(data=data, cfg=cfg)
     write_results_jsonl(results, SEARCH_DIR / "results.jsonl")
     write_results_csv(results, SEARCH_DIR / "leaderboard.csv")
@@ -77,7 +83,7 @@ def ensure_freeze_record(cfg: SearchConfig) -> dict:
     return freeze
 
 
-def train_both_methods(freeze: dict, cfg: SearchConfig) -> None:
+def train_both_methods(freeze: dict, cfg: SearchConfig, data: ValidationData) -> None:
     """Train prototype and linear trainers from one frozen encoder config."""
     selection = freeze["selected"]
     encoder_config = EncoderConfig(
@@ -89,8 +95,6 @@ def train_both_methods(freeze: dict, cfg: SearchConfig) -> None:
         seed=int(selection["seed"]),
     )
 
-    data = make_dummy_validation_data(seed=3030, window_length=cfg.window_length)
-
     prototype = PrototypeHDCTrainer(encoder_config=encoder_config).fit(
         data.train.x, data.train.y
     )
@@ -101,6 +105,35 @@ def train_both_methods(freeze: dict, cfg: SearchConfig) -> None:
     proto_metrics = prototype.evaluate(data.val_clean.x, data.val_clean.y)
     linear_metrics = linear.evaluate(data.val_clean.x, data.val_clean.y)
 
+    # Optional held-out view from static split test windows (not used for selection).
+    x_train_split, y_train_split, x_test_split, y_test_split = (
+        load_train_and_test_windows(
+            DATASET_DIR,
+            window_cfg=WindowingConfig(
+                window_length=cfg.window_length,
+                stride_ms=float(cfg.stride_ms),
+                sampling_rate_hz=float(cfg.sampling_rate_hz),
+            ),
+        )
+    )
+    if x_train_split.shape[0] > 0 and y_train_split.shape[0] > 0:
+        # Keep both trainers fit on ValidationData train split; test-only reporting here.
+        if x_test_split.shape[0] > 0 and y_test_split.shape[0] > 0:
+            proto_test_metrics = prototype.evaluate(x_test_split, y_test_split)
+            linear_test_metrics = linear.evaluate(x_test_split, y_test_split)
+        else:
+            proto_test_metrics = {
+                "balanced_accuracy": float("nan"),
+                "auroc": float("nan"),
+            }
+            linear_test_metrics = {
+                "balanced_accuracy": float("nan"),
+                "auroc": float("nan"),
+            }
+    else:
+        proto_test_metrics = {"balanced_accuracy": float("nan"), "auroc": float("nan")}
+        linear_test_metrics = {"balanced_accuracy": float("nan"), "auroc": float("nan")}
+
     proto_path = MODELS_DIR / "prototype"
     linear_path = MODELS_DIR / "linear"
     prototype.save(proto_path)
@@ -110,8 +143,11 @@ def train_both_methods(freeze: dict, cfg: SearchConfig) -> None:
     report = {
         "prototype": proto_metrics,
         "linear": linear_metrics,
+        "prototype_test": proto_test_metrics,
+        "linear_test": linear_test_metrics,
         "encoder_config": asdict(encoder_config),
         "model_paths": {"prototype": str(proto_path), "linear": str(linear_path)},
+        "data_source": str(DATASET_DIR),
     }
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     (MODELS_DIR / "train_report.yaml").write_text(
@@ -145,8 +181,17 @@ def train_both_methods(freeze: dict, cfg: SearchConfig) -> None:
 
 def main() -> None:
     cfg = SearchConfig()
-    freeze = ensure_freeze_record(cfg)
-    train_both_methods(freeze=freeze, cfg=cfg)
+    ensure_static_dataset_ready(DATASET_DIR)
+    data = load_validation_data_from_static(
+        DATASET_DIR,
+        window_cfg=WindowingConfig(
+            window_length=cfg.window_length,
+            stride_ms=float(cfg.stride_ms),
+            sampling_rate_hz=float(cfg.sampling_rate_hz),
+        ),
+    )
+    freeze = ensure_freeze_record(cfg=cfg, data=data)
+    train_both_methods(freeze=freeze, cfg=cfg, data=data)
 
 
 if __name__ == "__main__":

@@ -27,9 +27,9 @@ This repo is currently in the **simulation + offline HDC core** stage.
 - [x] 4) Build HDC core library
 - [x] 4.5) Build HDC models that call the primitives
 
-- [ ] 5) Build dataset + split layer (core implemented; transitional subsets pending)
+- [ ] 5) Build dataset + split layer (core done; transitional subsets pending)
 
-- [x] 6) Build offline validator + ranking engine (currently wired to dummy data)
+- [x] 6) Build offline validator + ranking engine (wired to static ODE windows)
 
 - [ ] 7) Run selection funnel + freeze final HDC setup (partial: freeze record exists)
 - [ ] 8) Calibrate thresholds + held-out offline report
@@ -62,7 +62,7 @@ This repo is currently in the **simulation + offline HDC core** stage.
 - [x] Search artifact outputs (`results.jsonl`, `leaderboard.csv`)
 - [x] Freeze record generation (`artifacts/encoder_search/freeze_record.yaml`)
 - [x] Combined validator + train script (`train/valid-train.py`)
-- [ ] ODE-backed dataset plugged into validator/train (currently dummy provider)
+- [x] ODE-backed dataset plugged into validator/train
 
 ### Testing
 
@@ -74,8 +74,7 @@ This repo is currently in the **simulation + offline HDC core** stage.
 
 ## What Is Still Missing (Short List)
 
-- [ ] Trajectory-level dataset/split module (healthy/pathological/onset/recovery/moderate/healthy-only holdout)
-- [ ] Leakage guards for overlapping windows across splits
+- [ ] Transitional subset builders (onset/recovery/moderate/healthy-only holdout)
 - [ ] Open-loop stimulation sanity gate script with pass/fail report
 - [ ] Classical and HDC closed-loop controller state machines with matched mechanics
 - [ ] Final threshold calibration on validation-only and single held-out test report
@@ -107,10 +106,20 @@ uv run python train/build-static-dataset.py
 uv run python train/prepare-static-splits.py
 ```
 
-## Current Training Flow (Important)
+Outputs:
 
-- `train/valid-train.py` currently uses synthetic dummy windows for end-to-end plumbing.
-- This is intentional while the ODE-backed dataset/split integration is being completed.
+- `train/build-static-dataset.py`
+  - `artifacts/datasets/static_v1/trajectories/*.npz`
+  - `artifacts/datasets/static_v1/manifest.csv`
+  - `artifacts/datasets/static_v1/build_config.yaml`
+- `train/prepare-static-splits.py`
+  - `artifacts/datasets/static_v1/manifest_with_splits.csv`
+  - `artifacts/datasets/static_v1/vet_issues.csv` (only written if issues are found)
+
+## Current Training Flow
+
+- `train/valid-train.py` now uses static ODE trajectories/windows from `artifacts/datasets/static_v1`.
+- If dataset manifests are missing, they are built/prepared automatically before validator/training.
 
 ## Produced results 
 
@@ -130,11 +139,19 @@ brain/
 ├── README.md
 ├── configs/
 │   └── sim_config.py
+├── ode-checks/
+│   └── open-loop-sanity.py
 ├── src/
-│   └── simulation/
-│       ├── model.py
-│       ├── runner.py
-│       └── lfp.py
+│   ├── simulation/
+│   │   ├── model.py
+│   │   ├── runner.py
+│   │   ├── lfp.py
+│   │   └── open_loop_sanity.py
+│   └── data/
+│       ├── __init__.py
+│       ├── build_static_dataset.py
+│       ├── static_dataset.py
+│       └── hdc_adapter.py
 ├── hdc/
 │   ├── primitives.py
 │   ├── initializers.py
@@ -147,10 +164,14 @@ brain/
 │       ├── validator.py
 │       └── run.py
 ├── train/
-│   └── valid-train.py
+│   ├── valid-train.py
+│   ├── build-static-dataset.py
+│   └── prepare-static-splits.py
 ├── tests/
 │   ├── test_simulation.py
+│   ├── test_open_loop_sanity.py
 │   ├── test_hdc_core.py
+│   ├── test_data_pipeline.py
 │   ├── test_validator_search.py
 │   ├── test_training_layer.py
 │   └── test_reproducibility_dummy.py
