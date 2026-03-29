@@ -19,11 +19,18 @@ This repo is currently in the **simulation + offline HDC core** stage.
 
 - [x] 1) Lock experiment rules (spec table and fixed contract)
 - [x] 2) Build simulation and signal pipeline
+
 - [ ] 3) Run open-loop stimulation sanity gate (formal scripted gate pending)
+
+> TODO: run 3) ! 
+
 - [x] 4) Build HDC core library
 - [x] 4.5) Build HDC models that call the primitives
-- [ ] 5) Build dataset + split layer (trajectory-level, leak-safe)
+
+- [ ] 5) Build dataset + split layer (core implemented; transitional subsets pending)
+
 - [x] 6) Build offline validator + ranking engine (currently wired to dummy data)
+
 - [ ] 7) Run selection funnel + freeze final HDC setup (partial: freeze record exists)
 - [ ] 8) Calibrate thresholds + held-out offline report
 - [ ] 9) Integrate and evaluate closed-loop controllers
@@ -91,6 +98,13 @@ uv run pytest tests -q
 
 ```bash
 uv run python train/valid-train.py
+```
+
+4. Build and split static ODE dataset:
+
+```bash
+uv run python train/build-static-dataset.py
+uv run python train/prepare-static-splits.py
 ```
 
 ## Current Training Flow (Important)

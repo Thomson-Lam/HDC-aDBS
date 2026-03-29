@@ -10,6 +10,8 @@ wheels/
 .env
 
 data/
+!src/data/
+!src/data/*.py
 
 *.pdf 
 

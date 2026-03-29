@@ -85,3 +85,35 @@ uv run pytest tests/test_open_loop_sanity.py -v
 ```
 
 This test uses a shortened configuration and checks that summary/plots/CSV are generated.
+
+## 5) Build static ODE dataset (for model training pipeline)
+
+Generate trajectory files and a manifest from healthy/pathological ODE runs:
+
+```bash
+uv run python train/build-static-dataset.py
+```
+
+Outputs under:
+
+- `artifacts/datasets/static_v1/trajectories/*.npz`
+- `artifacts/datasets/static_v1/manifest.csv`
+- `artifacts/datasets/static_v1/build_config.yaml`
+
+## 6) Vet static data and assign train/val/test splits
+
+Run basic quality checks, then split at trajectory level using sklearn:
+
+```bash
+uv run python train/prepare-static-splits.py
+```
+
+Outputs:
+
+- `artifacts/datasets/static_v1/manifest_with_splits.csv`
+- `artifacts/datasets/static_v1/vet_issues.csv` (only if issues are found)
+
+Notes:
+
+- Splits are performed by trajectory (seed/run), not by windows.
+- Window extraction is intended to happen after split assignment to avoid leakage.
