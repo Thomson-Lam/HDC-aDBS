@@ -1,4 +1,4 @@
-created_at_utc: '2026-03-29T19:42:17.841566+00:00'
+created_at_utc: '2026-03-29T20:14:01.163454+00:00'
 metric_definitions_version: experiment-spec-v1
 seeds:
 - 0
@@ -12,7 +12,7 @@ healthy_seeds:
 - 102
 - 103
 - 104
-git_commit: 9db730462e797e529d9cc584cce29f26368a7b95
+git_commit: 0cdd7b125e393d715086e6a604d4bd773868cd97
 controller_config:
   fs: 250.0
   window_length: 128

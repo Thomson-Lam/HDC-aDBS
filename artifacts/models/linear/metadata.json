@@ -1,10 +1,13 @@
 {
   "encoder_config": {
     "clip_z": 3.0,
-    "dimension": 1000,
-    "n_bins": 16,
+    "dataset_mean": 0.0,
+    "dataset_std": 1.0,
+    "dimension": 10000,
+    "n_bins": 8,
+    "normalization": "window_zscore",
     "seed": 123,
-    "value_init": "rff",
+    "value_init": "random",
     "window_length": 128
   },
   "label_convention": {
@@ -12,6 +15,7 @@
     "pathological": 1
   },
   "linear_readout": {
+    "c": 0.01,
     "max_iter": 1000,
     "seed": 123,
     "solver": "liblinear"

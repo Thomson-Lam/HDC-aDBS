@@ -32,6 +32,9 @@ class SearchConfig:
     min_moderate_auroc: float = 0.55
     max_holdout_false_trigger_rate: float = 0.40
     top_k: int = 3
+    linear_c_candidates: tuple[float, ...] = (0.01, 0.1, 1.0, 10.0)
+    calibration_target_val_fpr: float = 0.20
+    allow_guardrail_fallback: bool = True
 
     def iter_encoder_specs(self) -> list[EncoderSearchSpec]:
         """Return all frozen encoder candidates.

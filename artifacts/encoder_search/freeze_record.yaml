@@ -1,18 +1,21 @@
 selected:
-  dimension: 1000
-  n_bins: 16
-  value_init: rff
-  readout: linear
+  dimension: 10000
+  n_bins: 8
+  value_init: random
+  readout: prototype
   clip_z: 3.0
   seed: 123
 selection_metrics:
-  balanced_accuracy_clean: 1.0
-  auroc_onset: 0.9950694444444445
-  auroc_recovery: 0.989375
-  min_transition_auroc: 0.989375
-  encoding_ms_per_window: 0.06474925142457424
-  model_bytes: 8008
-  rank: 1
+  balanced_accuracy_clean: 0.7261904761904763
+  auroc_onset: 0.71875
+  auroc_recovery: 0.2638888888888889
+  auroc_moderate: 0.7206632653061225
+  min_transition_auroc: 0.2638888888888889
+  healthy_holdout_false_trigger_rate: 0.3942307692307692
+  guardrail_pass: false
+  encoding_ms_per_window: 0.5140289414318951
+  model_bytes: 20000
+  rank: null
 search_config:
   sampling_rate_hz: 250
   window_length: 128
@@ -33,4 +36,20 @@ search_config:
   clip_z: 3.0
   base_seed: 123
   min_guardrail_auroc: 0.6
+  min_moderate_auroc: 0.55
+  max_holdout_false_trigger_rate: 0.4
   top_k: 3
+  linear_c_candidates:
+  - 0.01
+  - 0.1
+  - 1.0
+  - 10.0
+  calibration_target_val_fpr: 0.2
+  allow_guardrail_fallback: true
+selection_fallback:
+  used: true
+  reason: no eligible candidates passed guardrail
+  guardrail_thresholds:
+    min_transition_auroc: 0.6
+    min_moderate_auroc: 0.55
+    max_holdout_false_trigger_rate: 0.4

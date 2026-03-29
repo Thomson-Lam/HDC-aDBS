@@ -92,6 +92,8 @@ What this does:
 - runs encoder search if no freeze record exists,
 - freezes the selected encoder config,
 - trains both `prototype` and `linear` readouts,
+- auto-selects linear regularization (`C`) on clean validation,
+- calibrates decision thresholds on clean validation with an FPR target,
 - reports validation and held-out test metrics,
 - writes reproducibility audit outputs.
 
@@ -132,6 +134,24 @@ These are held-out split metrics reported after training.
 
 If you want notebook exploration, open `notebooks/01_sim_validation.ipynb` and load artifacts from `artifacts/models/` and `artifacts/datasets/static_v1/`.
 
+### 4.5) Run calibration + overfitting ablations (Phases 1-4)
+
+This runs threshold calibration, train-vs-val diagnostics, normalization ablations, and linear regularization sweeps.
+
+```bash
+uv run python train/calibrate-overfitting.py
+```
+
+Outputs:
+
+- `artifacts/overfit_calibration/phase1_4_experiments.csv`
+- `artifacts/overfit_calibration/phase1_4_summary.yaml`
+
+Notes:
+
+- This script uses existing static dataset + split artifacts.
+- It does not rebuild trajectories unless your dataset artifacts are missing.
+
 ### 5) Run closed-loop benchmark (4 conditions)
 
 ```bash
@@ -151,6 +171,31 @@ Default output files:
 - `artifacts/closed_loop/summary_by_condition.csv`
 - `artifacts/closed_loop/summary.yaml`
 - `artifacts/closed_loop/run_manifest.yaml`
+
+### 6) Generate report plots from artifacts
+
+Generate individual images for search, offline training, calibration, overfitting diagnostics, and (if present) closed-loop summaries:
+
+```bash
+uv run python plots/generate_all.py
+```
+
+Default output directory:
+
+- `artifacts/plots/`
+
+If closed-loop artifacts are missing, the closed-loop plot scripts are skipped automatically.
+
+Our outputs:
+
+```
+ uv run python -m controllers.run_closedloop_benchmark
+{
+  "per_run_metrics_csv": "artifacts/closed_loop/per_run_metrics.csv",
+  "summary_by_condition_csv": "artifacts/closed_loop/summary_by_condition.csv",
+  "run_manifest_yaml": "artifacts/closed_loop/run_manifest.yaml"
+}
+```
 
 ## Closed-Loop Command Options
 
