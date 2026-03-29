@@ -68,7 +68,7 @@ Pass criteria:
 - open-loop stimulation reduces pathological beta,
 - effect is reproducible across a small seed set.
 
-## 4) Build HDC core library (TODO)
+## 4) Build HDC core library (Implemented, to review)
 
 What this step does:
 Create the reusable encoding/scoring components that turn one signal window into one hypervector and then into a decision statistic.
@@ -93,7 +93,14 @@ Implementation units:
    - linear classifier over encoded hypervectors,
    - shared prediction interface for both readout types.
 
-## 5) Build dataset and split layer (TODO)
+## 4.5) Build HDC models that call the primitives (Done, to review)
+
+Use one shared base + two concrete trainers:
+- BaseHDCTrainer: owns encoder config, fit/predict interface, save/load hooks.
+- PrototypeHDCTrainer: wraps WindowEncoder + PrototypeReadout.
+- LinearHDCTrainer: wraps WindowEncoder + LinearReadout.
+
+## 5) Data Pipeline: Build dataset and split layer (TODO AFTER ODE MODEL)
 
 What this step does:
 Provide clean, leak-free access to train/validation/test windows with regime labels.

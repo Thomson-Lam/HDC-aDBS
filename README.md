@@ -2,6 +2,129 @@
 
 **A Lightweight Hyperdimensional Computing Controller for Adaptive Deep Brain Stimulation in an In Silico Parkinsonian Basal Ganglia Model**
 
+---
+
+## Implementation Quickstart
+
+This repository currently includes a working HDC core stack for:
+
+- bipolar hypervector primitives,
+- random and RFF dictionary initialization,
+- window encoder pipeline,
+- prototype-similarity and linear-HDC readouts,
+- fixed offline validator search,
+- training layer with model save/load.
+
+The current `train/valid-train.py` flow uses dummy data for end-to-end testing while the ODE-backed data pipeline is being integrated.
+
+## High-level Architecture
+
+The implemented path is:
+
+1. choose/freeze encoder config from validator search,
+2. encode windows into bipolar hypervectors,
+3. train one readout variant:
+   - prototype-similarity HDC, or
+   - linear classifier over encoded HDC vectors,
+4. evaluate and serialize artifacts.
+
+## Repository Tree (current core)
+
+```text
+brain/
+├── README.md
+├── pyproject.toml
+├── train/ # training code 
+│   └── valid-train.py
+├── hdc/ # hdc core 
+│   ├── __init__.py
+│   ├── initializers.py
+│   ├── primitives.py
+│   ├── dictionaries.py
+│   ├── encoder.py # encoder classdef and utils 
+│   ├── readouts.py
+│   ├── training.py
+│   └── search/
+│       ├── __init__.py
+│       ├── config.py
+│       ├── validator.py
+│       └── run.py 
+├── tests/
+│   ├── test_hdc_core.py # test HDC core utils 
+│   ├── test_reproducibility_dummy.py 
+│   ├── test_validator_search.py
+│   └── test_training_layer.py
+└── docs/
+    ├── experiment-spec.md
+    ├── encoder-searchspace.md
+    ├── hdc.md
+    └── models.md
+```
+
+## Setup
+
+1. Install dependencies:
+
+```bash
+uv sync
+```
+
+2. Run test suite:
+
+```bash
+uv run python -m unittest discover -s tests -v
+```
+
+## Run Validator + Training
+
+Run the combined validator/training flow:
+
+```bash
+uv run python train/valid-train.py
+```
+
+What this script does:
+
+1. looks for `artifacts/encoder_search/freeze_record.yaml`,
+2. if missing, runs fixed validator search and creates freeze record,
+3. trains both HDC readout variants with the frozen encoder config,
+4. saves model artifacts and a compact training report.
+
+Outputs:
+
+- `artifacts/encoder_search/results.jsonl`
+- `artifacts/encoder_search/leaderboard.csv`
+- `artifacts/encoder_search/freeze_record.yaml`
+- `artifacts/models/prototype/`
+- `artifacts/models/linear/`
+- `artifacts/models/train_report.yaml`
+
+## How Prototype HDC Works
+
+1. Raw window (length 128 samples at 250 Hz contract) is z-scored.
+2. Samples are quantized into bins.
+3. Value and position hypervectors are bound and bundled into one window HV.
+4. Class prototypes are built by bundling train HVs per class.
+5. Decision score is margin:
+
+   `score = sim(h, P_path) - sim(h, P_healthy)`
+
+6. Predict pathological if score >= threshold (default 0).
+
+## How Linear HDC Works
+
+1. Uses the same encoded window hypervectors as prototype HDC.
+2. Fits a linear logistic model over HV features.
+3. Uses linear decision function as pathological margin.
+4. Predict pathological if score >= threshold (default 0).
+
+## Notes on Current Stage
+
+- The core HDC model stack is implemented and tested.
+- The data pipeline for ODE trajectory sampling/splits is planned separately and can be connected later by replacing the dummy data provider in `train/valid-train.py`.
+
+---
+
 ## 1. Overview
 
 Deep Brain Stimulation (DBS) is an established therapy for Parkinson’s disease, but conventional systems typically operate in an open-loop fashion, delivering continuous stimulation regardless of whether pathological neural activity is present. While effective, this approach can waste energy and may contribute to unnecessary stimulation exposure.
@@ -326,4 +449,3 @@ By comparing HDC-triggered stimulation against both **continuous DBS** and an **
 Even if the answer is ultimately negative, the project remains valuable as a rigorous prototype and benchmarking framework.
 
 ---
-
