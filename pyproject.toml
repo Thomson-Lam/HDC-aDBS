@@ -19,3 +19,8 @@ dependencies = [
 dev = [
     "pytest>=9.0.2",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests that run the full ODE simulator (deselect with -k 'not slow')",
+]
