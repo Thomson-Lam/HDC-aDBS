@@ -138,41 +138,41 @@ Outputs:
 brain/
 ├── README.md
 ├── configs/
-│   └── sim_config.py
+│   └── sim_config.py # STN-GPe model configs 
 ├── ode-checks/
-│   └── open-loop-sanity.py
+│   └── open-loop-sanity.py # entry script for checking 
 ├── src/
 │   ├── simulation/
-│   │   ├── model.py
-│   │   ├── runner.py
-│   │   ├── lfp.py
-│   │   └── open_loop_sanity.py
-│   └── data/
+│   │   ├── model.py # ODE model 
+│   │   ├── runner.py # utils for running the sim model + LFP for signals for the controller
+│   │   ├── lfp.py # LFP surrogate core defs 
+│   │   └── open_loop_sanity.py # core utils for verifying ODE sim model behavior
+│   └── data/ # data pipeline 
 │       ├── __init__.py
-│       ├── build_static_dataset.py
-│       ├── static_dataset.py
-│       └── hdc_adapter.py
+│       ├── build_static_dataset.py # core def for generating trajectories and manifest
+│       ├── static_dataset.py # lib code for vetting data
+│       └── hdc_adapter.py # adapter Object Oriented Design pattern for data pipeline outputs -> HDC, which expects ValidationData 
 ├── hdc/
-│   ├── primitives.py
-│   ├── initializers.py
-│   ├── dictionaries.py
-│   ├── encoder.py
-│   ├── readouts.py
-│   ├── training.py
-│   └── search/
-│       ├── config.py
-│       ├── validator.py
-│       └── run.py
+│   ├── primitives.py # core binding, bundling logic 
+│   ├── initializers.py # random vs RFF init 
+│   ├── dictionaries.py # dictionary stores for hypervectors
+│   ├── encoder.py # encoder classdef 
+│   ├── readouts.py # training layer for raw HDC vs logreg over raw hypervectors 
+│   ├── training.py # encoding/training process primitives 
+│   └── search/ # code for mini grid search for hypervector encoder 
+│       ├── config.py # set config for search space here 
+│       ├── validator.py # core grid search code
+│       └── run.py # entry script called by ../train/valid-train.py
 ├── train/
 │   ├── valid-train.py # main training code for direct HDC and logreg over HDC 
-│   ├── build-static-dataset.py
-│   └── prepare-static-splits.py
+│   ├── build-static-dataset.py # script calls src/data/build_static_dataset.py
+│   └── prepare-static-splits.py 
 ├── artifacts/
 │   ├── datasets/
 │   │   └── static_v1/
 │   │       ├── trajectories/*.npz
-│   │       ├── manifest.csv
-│   │       ├── manifest_with_splits.csv
+│   │       ├── manifest.csv # data metadata 
+│   │       ├── manifest_with_splits.csv # split metadata
 │   │       └── build_config.yaml
 │   ├── encoder_search/ # search results for the encoder
 │   │   ├── results.jsonl

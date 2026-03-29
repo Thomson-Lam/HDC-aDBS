@@ -1,4 +1,6 @@
-"""Run the frozen open-loop stimulation sanity gate.
+"""
+Thin Runner code to run the frozen open-loop stimulation sanity gate, uses 
+src/simulation/open_loop_sanity.py.
 
 Usage:
     uv run python ode-checks/open-loop-sanity.py

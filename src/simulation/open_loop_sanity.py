@@ -1,4 +1,5 @@
-"""Open-loop stimulation sanity gate for the STN-GPe ODE model.
+"""
+Open-loop stimulation sanity gate for the STN-GPe ODE model.
 
 This module runs a frozen 5-seed gate to confirm the plant + stimulation path
 behaves as intended before closed-loop controller integration.
@@ -46,6 +47,7 @@ def make_pulse_train_stim(
     if pulse_width_ms <= 0.0:
         raise ValueError("pulse_width_ms must be > 0")
 
+    # Convert frequency to period so the stim callback can run in ms.
     period_ms = 1000.0 / frequency_hz
 
     def stim_fn(t_ms: float) -> float:
@@ -70,6 +72,7 @@ def beta_power_welch(
     if nseg <= 8:
         raise ValueError("lfp too short for stable PSD estimate")
 
+    # Estimate PSD and integrate only the beta-band region.
     freqs, psd = welch(lfp, fs=fs_hz, nperseg=nseg)
     mask = (freqs >= low_hz) & (freqs <= high_hz)
     if not np.any(mask):
@@ -166,6 +169,7 @@ def run_open_loop_sanity_gate(
                 t_warmup=config.t_warmup_ms,
             )
 
+            # Run the four fixed open-loop conditions for each seed.
             run_h = run_trajectory(cfg_h, seed=seed)
             run_p0 = run_trajectory(cfg_p, seed=seed)
             run_pw = run_trajectory(cfg_p, seed=seed, stim_fn=weak_stim_fn)
@@ -241,6 +245,7 @@ def run_open_loop_sanity_gate(
         _save_beta_summary_plot(rows, out_dir / "beta_summary.png")
 
     n_seeds = len(rows)
+    # Majority-vote checks make the gate robust to a small number of noisy seeds.
     patho_gt_healthy = sum(
         r["pathological_no_stim"] > r["healthy_no_stim"] for r in rows
     )

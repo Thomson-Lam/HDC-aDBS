@@ -57,7 +57,7 @@ def _trajectory_id(scenario: str, seed: int) -> str:
 def _resolved_recovery_stim_off_ms(cfg: BuildDatasetConfig) -> float:
     if cfg.recovery_stim_off_ms is not None:
         return float(cfg.recovery_stim_off_ms)
-    # Default to midpoint of the post-warmup interval.
+    # Default recovery transition to the middle of the usable (post-warmup) span.
     return float(cfg.t_warmup_ms + 0.5 * (cfg.t_end_ms - cfg.t_warmup_ms))
 
 
@@ -192,6 +192,7 @@ def _build_moderate_trajectory(seed: int, cfg: BuildDatasetConfig) -> dict[str, 
 
 
 def _build_onset_trajectory(seed: int, cfg: BuildDatasetConfig) -> dict[str, object]:
+    # Build onset by stitching a healthy segment followed by a pathological segment.
     healthy_seg = run_trajectory(
         config=healthy_config(t_end=cfg.onset_segment_ms, t_warmup=cfg.t_warmup_ms),
         seed=seed,
@@ -238,7 +239,7 @@ def _build_recovery_trajectory(seed: int, cfg: BuildDatasetConfig) -> dict[str, 
         pulse_width_ms=cfg.pulse_width_ms,
     )
 
-    # t is in ms. stimulation is on before stim_off, then off.
+    # Stimulation is on before stim_off, then turned fully off for recovery phase.
     def recovery_stim_fn(t_ms: float) -> float:
         if t_ms < stim_off_ms:
             return float(pulse_fn(t_ms))
@@ -301,6 +302,7 @@ def build_static_dataset(cfg: BuildDatasetConfig) -> Path:
 
     for scenario in cfg.scenarios:
         for seed in cfg.seeds:
+            # Dispatch each requested scenario to its trajectory generator.
             if scenario == "clean_healthy":
                 payload = _build_clean_trajectory("healthy", seed, cfg)
             elif scenario == "clean_pathological":
@@ -332,6 +334,7 @@ def build_static_dataset(cfg: BuildDatasetConfig) -> Path:
                 save_payload["y"] = payload["y"]
             np.savez_compressed(abs_path, **save_payload)
 
+            # Keep one manifest row per trajectory so downstream split/window code is reproducible.
             manifest_rows.append(
                 {
                     "trajectory_id": trajectory_id,

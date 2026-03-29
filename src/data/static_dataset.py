@@ -142,7 +142,7 @@ def assign_trajectory_splits(
 
     df = manifest.copy().reset_index(drop=True)
 
-    # Reserve healthy-only specificity trajectories outside train/val/test.
+    # Reserve healthy holdout trajectories so they never enter model fitting.
     if "scenario" in df.columns:
         holdout_mask = df["scenario"] == split_cfg.holdout_scenario
     else:
@@ -153,6 +153,7 @@ def assign_trajectory_splits(
     if len(work_df) < 3:
         raise ValueError("Need at least 3 non-holdout trajectories for train/val/test")
 
+    # Prefer scenario-level stratification so rare subsets are distributed more fairly.
     strat_col = "regime"
     if "scenario" in work_df.columns:
         strat_col = "scenario"
@@ -229,6 +230,7 @@ def _subset_and_label_for_windows(
     subsets = np.full((len(centers_ms),), "clean", dtype=object)
     labels = np.full((len(centers_ms),), -1, dtype=np.int64)
 
+    # Clean, moderate, and holdout trajectories have one stable label across all windows.
     if scenario in {
         "clean_healthy",
         "clean_pathological",
@@ -246,6 +248,7 @@ def _subset_and_label_for_windows(
             subsets[:] = "clean"
         return subsets, labels
 
+    # Transition trajectories switch labels before/after the recorded transition time.
     if scenario in {"onset", "recovery"}:
         transition_t = float(row.get("transition_time_ms", np.nan))
         half_width = float(row.get("transition_band_half_width_ms", np.nan))
@@ -263,6 +266,7 @@ def _subset_and_label_for_windows(
             labels[before] = 1
             labels[~before] = 0
 
+        # Keep transition subset near the event; mark far windows as context.
         is_transition_band = np.abs(centers_ms - transition_t) <= half_width
         subsets[~is_transition_band] = "context"
         return subsets, labels
@@ -317,6 +321,7 @@ def build_window_dataset_for_split(
         if windows.shape[0] == 0:
             continue
 
+        # Compute center timestamps once so subset labeling can be time-aware.
         centers_ms = _window_centers_ms(
             n_samples=len(np.asarray(traj["lfp"])),
             window_length=window_cfg.window_length,
@@ -329,6 +334,7 @@ def build_window_dataset_for_split(
 
         xs.append(windows)
         ys.append(labels.astype(np.int64, copy=False))
+        # Emit per-window metadata so audits can trace exactly where each window came from.
         meta_df = pd.DataFrame(
             {
                 "window_id": [

@@ -1,4 +1,5 @@
-"""Simulation runner: solve the ODE, resample to 250 Hz, validate output.
+"""
+Simulation runner: solve the ODE, resample to 250 Hz, validate output.
 
 Two entry points
 ----------------

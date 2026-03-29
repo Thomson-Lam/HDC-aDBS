@@ -54,6 +54,7 @@ def ensure_static_dataset_ready(dataset_dir: str | Path) -> Path:
 
     should_rebuild = False
 
+    # Rebuild when manifest is missing or from an older schema without robust scenarios.
     if not manifest_path.exists():
         should_rebuild = True
     else:
@@ -99,6 +100,7 @@ def load_validation_data_from_static(
         window_cfg=window_cfg,
     )
 
+    # Train/eval clean subset used for the main ranking metric.
     x_train, y_train, _ = filter_windows_by_subset(
         x_train_all,
         y_train_all,
@@ -136,7 +138,7 @@ def load_validation_data_from_static(
         allowed_subsets={"clean"},
     )
 
-    # Moderate validation set: clean healthy/pathological context + moderate windows.
+    # Moderate set mixes clean context + moderate windows to preserve binary AUROC semantics.
     if x_val_moderate_only.shape[0] > 0 and x_val_clean_for_mod.shape[0] > 0:
         x_val_moderate = np.vstack([x_val_clean_for_mod, x_val_moderate_only])
         y_val_moderate = np.concatenate([y_val_clean_for_mod, y_val_moderate_only])
@@ -144,6 +146,7 @@ def load_validation_data_from_static(
         x_val_moderate = x_val_moderate_only
         y_val_moderate = y_val_moderate_only
 
+    # Holdout split stays outside training and is only used for false-trigger checks.
     x_holdout_all, y_holdout_all, holdout_meta = build_window_dataset_for_split(
         dataset_dir=dataset_path,
         manifest_with_split=split_df,

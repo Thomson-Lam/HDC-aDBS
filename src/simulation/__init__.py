@@ -1,4 +1,6 @@
-"""Simulation package: ODE model, LFP extraction, and trajectory runner."""
+"""
+Core simulation package: ODE model, LFP extraction, and trajectory runner.
+"""
 
 from .runner import run_trajectory, run_chunked, check_signal_safety
 from .lfp import extract_lfp
