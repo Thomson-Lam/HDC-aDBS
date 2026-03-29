@@ -164,10 +164,32 @@ brain/
 │       ├── validator.py
 │       └── run.py
 ├── train/
-│   ├── valid-train.py
+│   ├── valid-train.py # main training code for direct HDC and logreg over HDC 
 │   ├── build-static-dataset.py
 │   └── prepare-static-splits.py
-├── tests/
+├── artifacts/
+│   ├── datasets/
+│   │   └── static_v1/
+│   │       ├── trajectories/*.npz
+│   │       ├── manifest.csv
+│   │       ├── manifest_with_splits.csv
+│   │       └── build_config.yaml
+│   ├── encoder_search/ # search results for the encoder
+│   │   ├── results.jsonl
+│   │   ├── leaderboard.csv
+│   │   └── freeze_record.yaml
+│   ├── models/ # model vectors
+│   │   ├── prototype/
+│   │   ├── linear/
+│   │   ├── train_report.yaml
+│   │   └── training_audit.yaml
+│   └── open_loop_sanity/ # open loop controller validation for ODE model
+│       ├── summary.yaml
+│       ├── per_seed_metrics.csv
+│       ├── seed0_traces.png
+│       ├── beta_summary.png
+│       └── open_loop_sanity.log
+├── tests/ # tests for core code 
 │   ├── test_simulation.py
 │   ├── test_open_loop_sanity.py
 │   ├── test_hdc_core.py
