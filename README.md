@@ -72,10 +72,8 @@ This repo is currently in the **simulation + offline HDC core** stage.
 
 ## What Is Still Missing (Short List)
 
-- [ ] Classical and HDC closed-loop controller state machines with matched mechanics - OLIVER 
+- [ ] Classical and HDC closed-loop controller state machines with matched mechanics -- improve the metrics! 
 - [ ] Final threshold calibration on validation-only and single held-out test report
-
-
 
 ## Quickstart
 

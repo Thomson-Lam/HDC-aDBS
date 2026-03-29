@@ -14,6 +14,7 @@ All buffering, state transitions, and metric accumulation live here.
 from __future__ import annotations
 
 import math
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -21,10 +22,13 @@ from typing import Callable
 
 import numpy as np
 
+from .waveform import make_epoch_gated_pulse_train, pulses_per_epoch
+
 
 # ---------------------------------------------------------------------------
 # Stimulation state machine states
 # ---------------------------------------------------------------------------
+
 
 class StimState(Enum):
     """Three-state machine controlling when stimulation current is applied.
@@ -34,14 +38,16 @@ class StimState(Enum):
     LOCKOUT     — post-burst refractory period; no new trigger allowed until
                   _lockout_end_t so we don't chatter
     """
-    IDLE        = 0
+
+    IDLE = 0
     STIMULATING = 1
-    LOCKOUT     = 2
+    LOCKOUT = 2
 
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class ControllerConfig:
@@ -51,6 +57,7 @@ class ControllerConfig:
     Override at instantiation time; the dataclass is frozen so it cannot
     be mutated after construction.
     """
+
     fs: float = 250.0
     """Sampling rate (Hz).  Must match SimConfig.fs."""
 
@@ -77,10 +84,17 @@ class ControllerConfig:
     For HDC margin scores the natural zero-crossing separates healthy (negative)
     from pathological (positive); 0.0 is the sensible default before calibration."""
 
+    pulse_frequency_hz: float = 130.0
+    """Pulse frequency used inside each stimulation epoch (Hz)."""
+
+    pulse_width_ms: float = 1.0
+    """Pulse width used inside each stimulation epoch (ms)."""
+
 
 # ---------------------------------------------------------------------------
 # Metrics
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ControllerMetrics:
@@ -88,6 +102,7 @@ class ControllerMetrics:
 
     All counts and timestamps are in units of the simulation time axis (ms).
     """
+
     n_decisions: int = 0
     """Total number of times _compute_decision() was called."""
 
@@ -106,6 +121,23 @@ class ControllerMetrics:
     stim_times_ms: list = field(default_factory=list)
     """Simulation timestamps (ms) of each triggered stim burst."""
 
+    pulse_count: int = 0
+    """Total pulse starts delivered across stimulation epochs."""
+
+    blocked_detections_lockout: int = 0
+    """Detections ignored while in LOCKOUT."""
+
+    blocked_detections_stimulating: int = 0
+    """Detections ignored while already STIMULATING."""
+
+    decision_times_ms: list = field(default_factory=list)
+    """Per-decision compute times (ms) for _compute_decision."""
+
+    @property
+    def stim_onset_times_ms(self) -> list:
+        """Alias for stim_times_ms for clearer benchmark naming."""
+        return self.stim_times_ms
+
     @property
     def duty_cycle(self) -> float:
         """Fraction of time the stimulator was active (0.0–1.0)."""
@@ -115,20 +147,35 @@ class ControllerMetrics:
 
     def to_dict(self) -> dict:
         """Serialise to a plain dict for YAML / JSON output."""
+        decision_times = np.asarray(self.decision_times_ms, dtype=np.float64)
+        decision_time_mean_ms = (
+            float(decision_times.mean()) if decision_times.size else 0.0
+        )
+        decision_time_p95_ms = (
+            float(np.percentile(decision_times, 95.0)) if decision_times.size else 0.0
+        )
         return {
-            "n_decisions":        self.n_decisions,
-            "n_detections":       self.n_detections,
-            "n_stimulations":     self.n_stimulations,
-            "duty_cycle":         self.duty_cycle,
+            "n_decisions": self.n_decisions,
+            "n_detections": self.n_detections,
+            "n_stimulations": self.n_stimulations,
+            "duty_cycle": self.duty_cycle,
             "total_stim_samples": self.total_stim_samples,
-            "total_samples":      self.total_samples,
-            "stim_times_ms":      list(self.stim_times_ms),
+            "total_samples": self.total_samples,
+            "stim_times_ms": list(self.stim_times_ms),
+            "stim_onset_times_ms": list(self.stim_times_ms),
+            "pulse_count": self.pulse_count,
+            "blocked_detections_lockout": self.blocked_detections_lockout,
+            "blocked_detections_stimulating": self.blocked_detections_stimulating,
+            "decision_times_ms": list(self.decision_times_ms),
+            "decision_time_mean_ms": decision_time_mean_ms,
+            "decision_time_p95_ms": decision_time_p95_ms,
         }
 
 
 # ---------------------------------------------------------------------------
 # Abstract base controller
 # ---------------------------------------------------------------------------
+
 
 class BaseController(ABC):
     """Abstract base for all closed-loop DBS controllers.
@@ -152,13 +199,13 @@ class BaseController(ABC):
         # When the buffer is full, pushing a new sample overwrites the oldest one.
         self._buffer: np.ndarray = np.empty(config.window_length, dtype=np.float64)
         self._buffer_head: int = 0
-        self._buffer_fill: int = 0   # counts 0 → window_length then stays there
+        self._buffer_fill: int = 0  # counts 0 → window_length then stays there
 
         # ---- state machine -----------------------------------------------
         self.state: StimState = StimState.IDLE
-        self._stim_end_t:    float = -math.inf  # sim time (ms) when current burst ends
+        self._stim_end_t: float = -math.inf  # sim time (ms) when current burst ends
         self._lockout_end_t: float = -math.inf  # sim time (ms) when lockout ends
-        self._current_t:     float = 0.0        # most recent sim time seen
+        self._current_t: float = 0.0  # most recent sim time seen
 
         # ---- decision cadence --------------------------------------------
         # Number of samples between successive _compute_decision calls.
@@ -206,7 +253,10 @@ class BaseController(ABC):
             if self._samples_since_decision >= self._decision_stride and self.is_ready:
                 self._samples_since_decision = 0
                 window = self.get_latest_window()
-                score  = self._compute_decision(window)
+                t_start = time.perf_counter()
+                score = self._compute_decision(window)
+                elapsed_ms = (time.perf_counter() - t_start) * 1000.0
+                self.metrics.decision_times_ms.append(float(elapsed_ms))
                 self.metrics.n_decisions += 1
 
                 if score >= self.config.threshold:
@@ -224,12 +274,12 @@ class BaseController(ABC):
         """
         if not self.is_ready:
             return None
-        n   = self.config.window_length
+        n = self.config.window_length
         idx = (self._buffer_head + np.arange(n)) % n
         return self._buffer[idx].copy()
 
     def get_stim_fn(self) -> Callable[[float], float]:
-        """Return a closure that reflects the current stimulation state.
+        """Return a closure that reflects the current stimulation waveform.
 
         This closure is passed to the ODE solver as stim_fn(t) -> float.
         It captures `self` by reference so it always reads the most recent
@@ -237,12 +287,34 @@ class BaseController(ABC):
         rebuilt once per chunk (after controller.ingest() returns), so the
         ODE within each chunk sees a consistent state for its duration.
         """
-        ctrl = self  # explicit reference for clarity
+        return make_epoch_gated_pulse_train(
+            amplitude=self.config.stim_amplitude,
+            frequency_hz=self.config.pulse_frequency_hz,
+            pulse_width_ms=self.config.pulse_width_ms,
+            epoch_active_fn=self.is_epoch_active,
+        )
 
-        def stim_fn(t: float) -> float:  # noqa: ARG001 (t unused here; needed by ODE interface)
-            return ctrl.config.stim_amplitude if ctrl.state == StimState.STIMULATING else 0.0
+    def state_at(self, t_ms: float) -> StimState:
+        """Predict controller state at ``t_ms`` using current state timers."""
+        if self.state == StimState.IDLE:
+            return StimState.IDLE
+        if self.state == StimState.STIMULATING:
+            if not math.isfinite(self._stim_end_t):
+                return StimState.STIMULATING
+            if t_ms < self._stim_end_t:
+                return StimState.STIMULATING
+            if t_ms < self._lockout_end_t:
+                return StimState.LOCKOUT
+            return StimState.IDLE
+        if not math.isfinite(self._lockout_end_t):
+            return StimState.LOCKOUT
+        if t_ms < self._lockout_end_t:
+            return StimState.LOCKOUT
+        return StimState.IDLE
 
-        return stim_fn
+    def is_epoch_active(self, t_ms: float) -> bool:
+        """Return whether stimulation epoch is active at ``t_ms``."""
+        return self.state_at(t_ms) == StimState.STIMULATING
 
     @property
     def is_ready(self) -> bool:
@@ -254,13 +326,13 @@ class BaseController(ABC):
 
         Used in tests and when reusing a controller object for multiple runs.
         """
-        self._buffer      = np.empty(self.config.window_length, dtype=np.float64)
+        self._buffer = np.empty(self.config.window_length, dtype=np.float64)
         self._buffer_head = 0
         self._buffer_fill = 0
-        self.state           = StimState.IDLE
-        self._stim_end_t     = -math.inf
-        self._lockout_end_t  = -math.inf
-        self._current_t      = 0.0
+        self.state = StimState.IDLE
+        self._stim_end_t = -math.inf
+        self._lockout_end_t = -math.inf
+        self._current_t = 0.0
         self._samples_since_decision = 0
         self.metrics = ControllerMetrics()
 
@@ -290,7 +362,8 @@ class BaseController(ABC):
         Accumulates total_stim_samples while STIMULATING for duty-cycle math.
         """
         if self.state == StimState.STIMULATING:
-            self.metrics.total_stim_samples += 1
+            if current_t < self._stim_end_t:
+                self.metrics.total_stim_samples += 1
             # Burst has expired → enter post-burst lockout
             if current_t >= self._stim_end_t:
                 self.state = StimState.LOCKOUT
@@ -307,13 +380,21 @@ class BaseController(ABC):
         are counted in n_detections but do NOT retrigger (avoids chatter).
         """
         if self.state != StimState.IDLE:
+            if self.state == StimState.STIMULATING:
+                self.metrics.blocked_detections_stimulating += 1
+            elif self.state == StimState.LOCKOUT:
+                self.metrics.blocked_detections_lockout += 1
             return  # blocked by ongoing stim or lockout — do nothing
 
-        self.state           = StimState.STIMULATING
-        self._stim_end_t     = current_t + self.config.stim_duration_ms
-        self._lockout_end_t  = self._stim_end_t + self.config.lockout_duration_ms
+        self.state = StimState.STIMULATING
+        self._stim_end_t = current_t + self.config.stim_duration_ms
+        self._lockout_end_t = self._stim_end_t + self.config.lockout_duration_ms
         self.metrics.n_stimulations += 1
         self.metrics.stim_times_ms.append(current_t)
+        self.metrics.pulse_count += pulses_per_epoch(
+            stim_duration_ms=self.config.stim_duration_ms,
+            frequency_hz=self.config.pulse_frequency_hz,
+        )
 
     # ------------------------------------------------------------------
     # Abstract: subclasses implement this only
