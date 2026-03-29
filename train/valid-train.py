@@ -9,10 +9,12 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
 
 import numpy as np
+import pandas as pd
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -42,6 +44,84 @@ SEARCH_DIR = ARTIFACT_ROOT / "encoder_search"
 FREEZE_PATH = SEARCH_DIR / "freeze_record.yaml"
 MODELS_DIR = ARTIFACT_ROOT / "models"
 DATASET_DIR = ARTIFACT_ROOT / "datasets" / "static_v1"
+
+
+def _label_counts(y: np.ndarray) -> dict[str, int]:
+    labels, counts = np.unique(y.astype(np.int64), return_counts=True)
+    return {str(int(k)): int(v) for k, v in zip(labels, counts)}
+
+
+def _safe_split_scenario_counts(dataset_dir: Path) -> list[dict[str, object]]:
+    split_manifest = dataset_dir / "manifest_with_splits.csv"
+    if not split_manifest.exists():
+        return []
+    df = pd.read_csv(split_manifest)
+    if "split" not in df.columns or "scenario" not in df.columns:
+        return []
+    grouped = (
+        df.groupby(["split", "scenario"]).size().reset_index(name="n_trajectories")
+    )
+    return grouped.to_dict(orient="records")
+
+
+def write_training_audit(
+    *,
+    cfg: SearchConfig,
+    freeze: dict,
+    data: ValidationData,
+    report: dict,
+    output_path: Path,
+    dataset_dir: Path,
+) -> None:
+    """Write one auditable training record with data coverage and guardrails."""
+    selection_metrics = freeze.get("selection_metrics", {})
+    audit = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "data_source": str(dataset_dir),
+        "artifacts": {
+            "freeze_record": str(FREEZE_PATH),
+            "search_leaderboard": str(SEARCH_DIR / "leaderboard.csv"),
+            "search_results": str(SEARCH_DIR / "results.jsonl"),
+            "train_report": str(MODELS_DIR / "train_report.yaml"),
+        },
+        "guardrail_thresholds": {
+            "min_transition_auroc": float(cfg.min_guardrail_auroc),
+            "min_moderate_auroc": float(cfg.min_moderate_auroc),
+            "max_holdout_false_trigger_rate": float(cfg.max_holdout_false_trigger_rate),
+        },
+        "selected_config": freeze.get("selected", {}),
+        "selected_metrics": selection_metrics,
+        "split_scenario_trajectory_counts": _safe_split_scenario_counts(dataset_dir),
+        "window_coverage": {
+            "train": {
+                "n_windows": int(data.train.x.shape[0]),
+                "label_counts": _label_counts(data.train.y),
+            },
+            "val_clean": {
+                "n_windows": int(data.val_clean.x.shape[0]),
+                "label_counts": _label_counts(data.val_clean.y),
+            },
+            "val_onset": {
+                "n_windows": int(data.val_onset.x.shape[0]),
+                "label_counts": _label_counts(data.val_onset.y),
+            },
+            "val_recovery": {
+                "n_windows": int(data.val_recovery.x.shape[0]),
+                "label_counts": _label_counts(data.val_recovery.y),
+            },
+            "val_moderate": {
+                "n_windows": int(data.val_moderate.x.shape[0]),
+                "label_counts": _label_counts(data.val_moderate.y),
+            },
+            "holdout_healthy": {
+                "n_windows": int(data.holdout_healthy.x.shape[0]),
+                "label_counts": _label_counts(data.holdout_healthy.y),
+            },
+        },
+        "reported_metrics": report,
+    }
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(yaml.safe_dump(audit, sort_keys=False), encoding="utf-8")
 
 
 def ensure_freeze_record(cfg: SearchConfig, data: ValidationData) -> dict:
@@ -178,6 +258,16 @@ def train_both_methods(freeze: dict, cfg: SearchConfig, data: ValidationData) ->
         yaml.safe_dump(report, sort_keys=False), encoding="utf-8"
     )
 
+    audit_path = MODELS_DIR / "training_audit.yaml"
+    write_training_audit(
+        cfg=cfg,
+        freeze=freeze,
+        data=data,
+        report=report,
+        output_path=audit_path,
+        dataset_dir=DATASET_DIR,
+    )
+
     # Quick load-check for reproducible inference path.
     prototype_loaded = PrototypeHDCTrainer.load(proto_path)
     linear_loaded = LinearHDCTrainer.load(linear_path)
@@ -201,6 +291,7 @@ def train_both_methods(freeze: dict, cfg: SearchConfig, data: ValidationData) ->
     print(f"Linear load-check max score delta: {float(linear_delta):.12f}")
     print(f"Freeze record: {FREEZE_PATH}")
     print(f"Train report: {MODELS_DIR / 'train_report.yaml'}")
+    print(f"Training audit: {MODELS_DIR / 'training_audit.yaml'}")
 
 
 def main() -> None:

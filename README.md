@@ -130,6 +130,7 @@ Outputs:
   - `artifacts/models/prototype/`
   - `artifacts/models/linear/`
   - `artifacts/models/train_report.yaml`
+  - `artifacts/models/training_audit.yaml`
 
 ## Repository Layout
 
