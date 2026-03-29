@@ -40,7 +40,7 @@ from src.simulation.runner import (
     check_signal_safety,
     _initial_conditions,  # not exported publicly; imported directly
 )
-from .base import BaseController, StimState
+from .base import BaseController
 
 if TYPE_CHECKING:
     pass
@@ -79,21 +79,21 @@ def run_closed_loop(
         'config'  : SimConfig used
         'seed'    : int seed used
     """
-    dt_ms    = 1000.0 / config.fs   # 4.0 ms at 250 Hz
+    dt_ms = 1000.0 / config.fs  # 4.0 ms at 250 Hz
     chunk_ms = chunk_duration_s * 1000.0
 
     # Seeded initial conditions (same as runner.py so results are comparable)
-    rng      = np.random.default_rng(seed)
+    rng = np.random.default_rng(seed)
     y_current = _initial_conditions(config, rng)
 
     # Build chunk time boundaries: [t0, t1), [t1, t2), ..., [t_{n-1}, t_end)
     t_starts = np.arange(config.t_start, config.t_end, chunk_ms)
-    t_ends   = np.append(t_starts[1:], config.t_end)
+    t_ends = np.append(t_starts[1:], config.t_end)
 
     # Per-chunk accumulators (we'll concatenate at the end)
-    t_parts    = []   # (n_chunk_samples,) ms
-    lfp_parts  = []   # (n_chunk_samples,) mV  — raw LFP, warmup not yet stripped
-    stim_parts = []   # (n_chunk_samples,) float — stim current for each sample
+    t_parts = []  # (n_chunk_samples,) ms
+    lfp_parts = []  # (n_chunk_samples,) mV  — raw LFP, warmup not yet stripped
+    stim_parts = []  # (n_chunk_samples,) float — stim current for each sample
     state_parts = []  # (n_chunk_samples,) int  — StimState.value for each sample
 
     for t_a, t_b in zip(t_starts, t_ends):
@@ -107,18 +107,6 @@ def run_closed_loop(
         # the ODE completes), which is the correct causal behaviour.
         stim_fn = controller.get_stim_fn()
 
-        # Record the stim amplitude AND state that are active for this chunk.
-        # Both must be captured BEFORE ingest() so they describe what the ODE
-        # actually ran with, not the updated state for the next chunk.
-        # (ingest() may transition the state machine — e.g. IDLE → STIMULATING —
-        # but that transition only affects the *next* chunk's ODE solve.)
-        stim_val_this_chunk  = (
-            controller.config.stim_amplitude
-            if controller.state == StimState.STIMULATING
-            else 0.0
-        )
-        state_val_this_chunk = controller.state.value
-
         # ---- 2. Solve ODE for this chunk ---------------------------------
         def rhs(t, y):
             return stn_gpe_rhs(t, y, config, stim_fn)
@@ -127,8 +115,8 @@ def run_closed_loop(
             rhs,
             [t_a, t_b],
             y_current,
-            method='RK45',
-            max_step=config.dt_max,   # must resolve action potentials
+            method="RK45",
+            max_step=config.dt_max,  # must resolve action potentials
             dense_output=False,
         )
 
@@ -141,14 +129,21 @@ def run_closed_loop(
         # Use the same grid-alignment math as runner.py:382-384.
         # n_first / n_last define which global-grid indices fall within [t_a, t_b).
         # Consecutive chunks therefore tile the grid with no gaps or duplicates.
-        n_first      = int(math.ceil((t_a - config.t_start) / dt_ms))
-        n_last       = int(math.ceil((t_b - config.t_start) / dt_ms)) - 1
+        n_first = int(math.ceil((t_a - config.t_start) / dt_ms))
+        n_last = int(math.ceil((t_b - config.t_start) / dt_ms)) - 1
         t_chunk_grid = config.t_start + np.arange(n_first, n_last + 1) * dt_ms
 
         t_c, y_c = resample_to_fs(sol.t, sol.y, config.fs, t_grid=t_chunk_grid)
 
         # ---- 4. Extract LFP surrogate ------------------------------------
         lfp_c = extract_lfp(y_c, config)
+
+        # Record stim/state that the ODE actually saw in this chunk.
+        # This must happen before ingest() mutates controller state.
+        stim_chunk = np.asarray([stim_fn(float(t_i)) for t_i in t_c], dtype=np.float64)
+        state_chunk = np.asarray(
+            [controller.state_at(float(t_i)).value for t_i in t_c], dtype=np.int32
+        )
 
         # ---- 5. Feed chunk to controller ---------------------------------
         # Only feed samples that are past the warmup window.  During warmup
@@ -161,8 +156,8 @@ def run_closed_loop(
         n_c = len(t_c)
         t_parts.append(t_c)
         lfp_parts.append(lfp_c)
-        stim_parts.append(np.full(n_c, stim_val_this_chunk))
-        state_parts.append(np.full(n_c, state_val_this_chunk, dtype=np.int32))
+        stim_parts.append(stim_chunk)
+        state_parts.append(state_chunk)
 
         # ---- 7. Carry raw ODE end-state (not resampled) ------------------
         # Using the last raw ODE point avoids accumulating interpolation error
@@ -170,27 +165,27 @@ def run_closed_loop(
         y_current = sol.y[:, -1]
 
     # Concatenate all chunks
-    t_full    = np.concatenate(t_parts)
-    lfp_full  = np.concatenate(lfp_parts)
+    t_full = np.concatenate(t_parts)
+    lfp_full = np.concatenate(lfp_parts)
     stim_full = np.concatenate(stim_parts)
     state_full = np.concatenate(state_parts)
 
     # Discard warmup transient (same logic as run_trajectory / run_chunked)
     n_warmup = int(math.ceil(config.t_warmup / dt_ms))
-    t_out     = t_full[n_warmup:]
-    lfp_out   = lfp_full[n_warmup:]
-    stim_out  = stim_full[n_warmup:]
+    t_out = t_full[n_warmup:]
+    lfp_out = lfp_full[n_warmup:]
+    stim_out = stim_full[n_warmup:]
     state_out = state_full[n_warmup:]
 
     # Safety check on the raw LFP (matches runner.py convention)
     check_signal_safety(t_out, lfp_out)
 
     return {
-        't':       t_out,
-        'lfp':     lfp_out,
-        'stim':    stim_out,
-        'state':   state_out,
-        'metrics': controller.metrics,
-        'config':  config,
-        'seed':    seed,
+        "t": t_out,
+        "lfp": lfp_out,
+        "stim": stim_out,
+        "state": state_out,
+        "metrics": controller.metrics,
+        "config": config,
+        "seed": seed,
     }

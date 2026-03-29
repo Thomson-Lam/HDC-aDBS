@@ -1,0 +1,17 @@
+split,scenario,n_trajectories
+holdout,healthy_holdout,5
+test,clean_healthy,1
+test,clean_pathological,1
+test,moderate,1
+test,onset,1
+test,recovery,1
+train,clean_healthy,3
+train,clean_pathological,3
+train,moderate,3
+train,onset,3
+train,recovery,3
+val,clean_healthy,1
+val,clean_pathological,1
+val,moderate,1
+val,onset,1
+val,recovery,1

@@ -9,6 +9,7 @@ wheels/
 .venv
 .env
 
+notebooks/.ipynb_checkpoints
 data/
 !src/data/
 !src/data/*.py

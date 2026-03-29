@@ -1,0 +1,236 @@
+timestamp_utc: '2026-03-29T20:04:45.357228+00:00'
+data_source: artifacts/datasets/static_v1
+artifacts:
+  freeze_record: artifacts/encoder_search/freeze_record.yaml
+  search_leaderboard: artifacts/encoder_search/leaderboard.csv
+  search_results: artifacts/encoder_search/results.jsonl
+  train_report: artifacts/models/train_report.yaml
+guardrail_thresholds:
+  min_transition_auroc: 0.6
+  min_moderate_auroc: 0.55
+  max_holdout_false_trigger_rate: 0.4
+selected_config:
+  dimension: 10000
+  n_bins: 8
+  value_init: random
+  readout: prototype
+  clip_z: 3.0
+  seed: 123
+selected_metrics:
+  balanced_accuracy_clean: 0.7261904761904763
+  auroc_onset: 0.71875
+  auroc_recovery: 0.2638888888888889
+  auroc_moderate: 0.7206632653061225
+  min_transition_auroc: 0.2638888888888889
+  healthy_holdout_false_trigger_rate: 0.3942307692307692
+  guardrail_pass: false
+  encoding_ms_per_window: 0.5140289414318951
+  model_bytes: 20000
+  rank: null
+split_scenario_trajectory_counts:
+- split: holdout
+  scenario: healthy_holdout
+  n_trajectories: 5
+- split: test
+  scenario: clean_healthy
+  n_trajectories: 1
+- split: test
+  scenario: clean_pathological
+  n_trajectories: 1
+- split: test
+  scenario: moderate
+  n_trajectories: 1
+- split: test
+  scenario: onset
+  n_trajectories: 1
+- split: test
+  scenario: recovery
+  n_trajectories: 1
+- split: train
+  scenario: clean_healthy
+  n_trajectories: 3
+- split: train
+  scenario: clean_pathological
+  n_trajectories: 3
+- split: train
+  scenario: moderate
+  n_trajectories: 3
+- split: train
+  scenario: onset
+  n_trajectories: 3
+- split: train
+  scenario: recovery
+  n_trajectories: 3
+- split: val
+  scenario: clean_healthy
+  n_trajectories: 1
+- split: val
+  scenario: clean_pathological
+  n_trajectories: 1
+- split: val
+  scenario: moderate
+  n_trajectories: 1
+- split: val
+  scenario: onset
+  n_trajectories: 1
+- split: val
+  scenario: recovery
+  n_trajectories: 1
+window_coverage:
+  train:
+    n_windows: 252
+    label_counts:
+      '0': 126
+      '1': 126
+  val_clean:
+    n_windows: 84
+    label_counts:
+      '0': 42
+      '1': 42
+  val_onset:
+    n_windows: 16
+    label_counts:
+      '0': 8
+      '1': 8
+  val_recovery:
+    n_windows: 17
+    label_counts:
+      '0': 9
+      '1': 8
+  val_moderate:
+    n_windows: 126
+    label_counts:
+      '0': 42
+      '1': 84
+  holdout_healthy:
+    n_windows: 520
+    label_counts:
+      '0': 520
+reported_metrics:
+  prototype:
+    balanced_accuracy: 0.6309523809523809
+    auroc: 0.7208049886621315
+  linear:
+    balanced_accuracy: 0.5714285714285714
+    auroc: 0.6201814058956916
+  prototype_onset:
+    balanced_accuracy: 0.8125
+    auroc: 0.859375
+  linear_onset:
+    balanced_accuracy: 0.8125
+    auroc: 0.875
+  prototype_recovery:
+    balanced_accuracy: 0.3125
+    auroc: 0.19444444444444445
+  linear_recovery:
+    balanced_accuracy: 0.25
+    auroc: 0.33333333333333337
+  prototype_moderate:
+    balanced_accuracy: 0.6369047619047619
+    auroc: 0.6999716553287982
+  linear_moderate:
+    balanced_accuracy: 0.5595238095238095
+    auroc: 0.594671201814059
+  prototype_holdout_false_trigger_rate: 0.38269230769230766
+  linear_holdout_false_trigger_rate: 0.34807692307692306
+  prototype_test:
+    balanced_accuracy: 0.5476190476190477
+    auroc: 0.679421768707483
+  linear_test:
+    balanced_accuracy: 0.4880952380952381
+    auroc: 0.5600907029478458
+  calibration:
+    target_val_fpr: 0.2
+    prototype:
+      threshold: 0.008399999999999963
+      val_clean:
+        balanced_accuracy: 0.75
+        fpr: 0.07142857142857142
+        tpr: 0.5714285714285714
+        auroc: 0.7208049886621315
+    linear:
+      selected_c: 0.01
+      threshold: 2.237950740689121
+      val_clean:
+        balanced_accuracy: 0.7023809523809523
+        fpr: 0.0
+        tpr: 0.40476190476190477
+        auroc: 0.6201814058956916
+  prototype_calibrated:
+    train:
+      balanced_accuracy: 0.8888888888888888
+      fpr: 0.007936507936507936
+      tpr: 0.7857142857142857
+      auroc: 0.9714348702443941
+    val_clean:
+      balanced_accuracy: 0.75
+      fpr: 0.07142857142857142
+      tpr: 0.5714285714285714
+      auroc: 0.7208049886621315
+    val_onset:
+      balanced_accuracy: 0.75
+      fpr: 0.125
+      tpr: 0.625
+      auroc: 0.859375
+    val_recovery:
+      balanced_accuracy: 0.25
+      fpr: 1.0
+      tpr: 0.5
+      auroc: 0.19444444444444445
+    val_moderate:
+      balanced_accuracy: 0.6726190476190477
+      fpr: 0.09523809523809523
+      tpr: 0.44047619047619047
+      auroc: 0.6999716553287982
+    holdout_false_trigger_rate: 0.2653846153846154
+    test_clean:
+      balanced_accuracy: 0.5595238095238095
+      fpr: 0.5476190476190477
+      tpr: 0.6666666666666666
+      auroc: 0.679421768707483
+  linear_calibrated:
+    train:
+      balanced_accuracy: 1.0
+      fpr: 0.0
+      tpr: 1.0
+      auroc: 1.0
+    val_clean:
+      balanced_accuracy: 0.7023809523809523
+      fpr: 0.0
+      tpr: 0.40476190476190477
+      auroc: 0.6201814058956916
+    val_onset:
+      balanced_accuracy: 0.5
+      fpr: 0.0
+      tpr: 0.0
+      auroc: 0.875
+    val_recovery:
+      balanced_accuracy: 0.24305555555555555
+      fpr: 0.8888888888888888
+      tpr: 0.375
+      auroc: 0.33333333333333337
+    val_moderate:
+      balanced_accuracy: 0.5952380952380952
+      fpr: 0.0
+      tpr: 0.19047619047619047
+      auroc: 0.594671201814059
+    holdout_false_trigger_rate: 0.09615384615384616
+    test_clean:
+      balanced_accuracy: 0.6190476190476191
+      fpr: 0.09523809523809523
+      tpr: 0.3333333333333333
+      auroc: 0.5600907029478458
+  encoder_config:
+    dimension: 10000
+    n_bins: 8
+    window_length: 128
+    value_init: random
+    clip_z: 3.0
+    seed: 123
+    normalization: window_zscore
+    dataset_mean: 0.0
+    dataset_std: 1.0
+  model_paths:
+    prototype: artifacts/models/prototype
+    linear: artifacts/models/linear
+  data_source: artifacts/datasets/static_v1

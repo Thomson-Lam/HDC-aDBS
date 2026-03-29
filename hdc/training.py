@@ -166,11 +166,13 @@ class LinearHDCTrainer(BaseHDCTrainer):
         encoder_config: EncoderConfig,
         seed: int | None = None,
         max_iter: int = 1000,
+        c: float = 1.0,
     ) -> None:
         super().__init__(encoder_config=encoder_config)
         self.seed = seed
         self.max_iter = max_iter
-        self.readout = LinearReadout(seed=seed, max_iter=max_iter)
+        self.c = c
+        self.readout = LinearReadout(seed=seed, max_iter=max_iter, c=c)
 
     def fit(self, windows: np.ndarray, y: np.ndarray) -> "LinearHDCTrainer":
         x = self.encode(windows)
@@ -195,6 +197,7 @@ class LinearHDCTrainer(BaseHDCTrainer):
             "seed": self.seed,
             "max_iter": self.max_iter,
             "solver": "liblinear",
+            "c": self.c,
         }
         (path / "metadata.json").write_text(
             json.dumps(metadata, indent=2, sort_keys=True),
@@ -221,6 +224,7 @@ class LinearHDCTrainer(BaseHDCTrainer):
             encoder_config=encoder_config,
             seed=linear_meta.get("seed"),
             max_iter=int(linear_meta.get("max_iter", 1000)),
+            c=float(linear_meta.get("c", 1.0)),
         )
         trainer.encoder.value_dict = value_dict
         trainer.encoder.position_dict = position_dict

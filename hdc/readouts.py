@@ -86,15 +86,22 @@ class PrototypeReadout(BaseReadout):
 class LinearReadout(BaseReadout):
     """Logistic Regression trained over encoded hypervectors."""
 
-    def __init__(self, seed: int | None = None, max_iter: int = 1000) -> None:
+    def __init__(
+        self,
+        seed: int | None = None,
+        max_iter: int = 1000,
+        c: float = 1.0,
+    ) -> None:
         self.seed = seed
         self.max_iter = max_iter
+        self.c = c
         self.model = LogisticRegression(
             random_state=seed,
             max_iter=max_iter,
             solver="liblinear",
+            C=c,
         )
-    
+
     # fitting method for logreg.
     def fit(self, x: np.ndarray, y: np.ndarray) -> "LinearReadout":
         x, y = _validate_xy(x, y)

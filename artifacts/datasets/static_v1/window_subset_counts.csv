@@ -1,0 +1,17 @@
+split,subset,n_windows
+train,clean,252
+train,context,123
+train,moderate,126
+train,onset,48
+train,recovery,51
+val,clean,84
+val,context,41
+val,moderate,42
+val,onset,16
+val,recovery,17
+test,clean,84
+test,context,41
+test,moderate,42
+test,onset,16
+test,recovery,17
+holdout,healthy_holdout,520

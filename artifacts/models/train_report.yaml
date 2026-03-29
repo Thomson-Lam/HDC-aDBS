@@ -1,16 +1,127 @@
 prototype:
-  balanced_accuracy: 0.93125
-  auroc: 0.99828125
+  balanced_accuracy: 0.6309523809523809
+  auroc: 0.7208049886621315
 linear:
-  balanced_accuracy: 0.996875
-  auroc: 1.0
+  balanced_accuracy: 0.5714285714285714
+  auroc: 0.6201814058956916
+prototype_onset:
+  balanced_accuracy: 0.8125
+  auroc: 0.859375
+linear_onset:
+  balanced_accuracy: 0.8125
+  auroc: 0.875
+prototype_recovery:
+  balanced_accuracy: 0.3125
+  auroc: 0.19444444444444445
+linear_recovery:
+  balanced_accuracy: 0.25
+  auroc: 0.33333333333333337
+prototype_moderate:
+  balanced_accuracy: 0.6369047619047619
+  auroc: 0.6999716553287982
+linear_moderate:
+  balanced_accuracy: 0.5595238095238095
+  auroc: 0.594671201814059
+prototype_holdout_false_trigger_rate: 0.38269230769230766
+linear_holdout_false_trigger_rate: 0.34807692307692306
+prototype_test:
+  balanced_accuracy: 0.5476190476190477
+  auroc: 0.679421768707483
+linear_test:
+  balanced_accuracy: 0.4880952380952381
+  auroc: 0.5600907029478458
+calibration:
+  target_val_fpr: 0.2
+  prototype:
+    threshold: 0.008399999999999963
+    val_clean:
+      balanced_accuracy: 0.75
+      fpr: 0.07142857142857142
+      tpr: 0.5714285714285714
+      auroc: 0.7208049886621315
+  linear:
+    selected_c: 0.01
+    threshold: 2.237950740689121
+    val_clean:
+      balanced_accuracy: 0.7023809523809523
+      fpr: 0.0
+      tpr: 0.40476190476190477
+      auroc: 0.6201814058956916
+prototype_calibrated:
+  train:
+    balanced_accuracy: 0.8888888888888888
+    fpr: 0.007936507936507936
+    tpr: 0.7857142857142857
+    auroc: 0.9714348702443941
+  val_clean:
+    balanced_accuracy: 0.75
+    fpr: 0.07142857142857142
+    tpr: 0.5714285714285714
+    auroc: 0.7208049886621315
+  val_onset:
+    balanced_accuracy: 0.75
+    fpr: 0.125
+    tpr: 0.625
+    auroc: 0.859375
+  val_recovery:
+    balanced_accuracy: 0.25
+    fpr: 1.0
+    tpr: 0.5
+    auroc: 0.19444444444444445
+  val_moderate:
+    balanced_accuracy: 0.6726190476190477
+    fpr: 0.09523809523809523
+    tpr: 0.44047619047619047
+    auroc: 0.6999716553287982
+  holdout_false_trigger_rate: 0.2653846153846154
+  test_clean:
+    balanced_accuracy: 0.5595238095238095
+    fpr: 0.5476190476190477
+    tpr: 0.6666666666666666
+    auroc: 0.679421768707483
+linear_calibrated:
+  train:
+    balanced_accuracy: 1.0
+    fpr: 0.0
+    tpr: 1.0
+    auroc: 1.0
+  val_clean:
+    balanced_accuracy: 0.7023809523809523
+    fpr: 0.0
+    tpr: 0.40476190476190477
+    auroc: 0.6201814058956916
+  val_onset:
+    balanced_accuracy: 0.5
+    fpr: 0.0
+    tpr: 0.0
+    auroc: 0.875
+  val_recovery:
+    balanced_accuracy: 0.24305555555555555
+    fpr: 0.8888888888888888
+    tpr: 0.375
+    auroc: 0.33333333333333337
+  val_moderate:
+    balanced_accuracy: 0.5952380952380952
+    fpr: 0.0
+    tpr: 0.19047619047619047
+    auroc: 0.594671201814059
+  holdout_false_trigger_rate: 0.09615384615384616
+  test_clean:
+    balanced_accuracy: 0.6190476190476191
+    fpr: 0.09523809523809523
+    tpr: 0.3333333333333333
+    auroc: 0.5600907029478458
 encoder_config:
-  dimension: 1000
-  n_bins: 16
+  dimension: 10000
+  n_bins: 8
   window_length: 128
-  value_init: rff
+  value_init: random
   clip_z: 3.0
   seed: 123
+  normalization: window_zscore
+  dataset_mean: 0.0
+  dataset_std: 1.0
 model_paths:
   prototype: artifacts/models/prototype
   linear: artifacts/models/linear
+data_source: artifacts/datasets/static_v1

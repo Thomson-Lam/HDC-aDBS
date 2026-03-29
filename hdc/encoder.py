@@ -20,9 +20,13 @@ class EncoderConfig:
     value_init: str = "random"
     clip_z: float = 3.0
     seed: int | None = None
+    normalization: str = "window_zscore"
+    dataset_mean: float = 0.0
+    dataset_std: float = 1.0
 
-# the encoder designed for fixed length 1D signal windows 
-# this class encodes simulator output (ODE/LFP trajectories) into hypervectors for 
+
+# the encoder designed for fixed length 1D signal windows
+# this class encodes simulator output (ODE/LFP trajectories) into hypervectors for
 # classif.
 class WindowEncoder:
     """Encode fixed-length signal windows into bipolar hypervectors."""
@@ -36,6 +40,10 @@ class WindowEncoder:
             raise ValueError("window_length must be positive")
         if config.clip_z <= 0:
             raise ValueError("clip_z must be positive")
+        if config.normalization not in {"window_zscore", "dataset_zscore", "none"}:
+            raise ValueError(
+                "normalization must be one of {'window_zscore','dataset_zscore','none'}"
+            )
 
         self.config = config
         dict_cfg = DictionaryConfig(
@@ -55,8 +63,14 @@ class WindowEncoder:
     def window_length(self) -> int:
         return self.config.window_length
 
-    def zscore_window(self, window: np.ndarray) -> np.ndarray:
-        """Apply per-window z-score normalization per window."""
+    def normalize_window(self, window: np.ndarray) -> np.ndarray:
+        """Normalize one window before quantization.
+
+        Modes:
+        - ``window_zscore``: normalize each window independently (legacy default)
+        - ``dataset_zscore``: normalize with fixed dataset-level mean/std
+        - ``none``: no normalization
+        """
         x = np.asarray(window, dtype=np.float64)
         if x.ndim != 1:
             raise ValueError("window must be rank-1")
@@ -65,11 +79,23 @@ class WindowEncoder:
                 f"window length must be {self.window_length}, got {x.shape[0]}"
             )
 
-        mean = np.mean(x)
-        std = np.std(x)
-        if std <= 0.0:
-            return np.zeros_like(x)
-        return (x - mean) / std
+        mode = self.config.normalization
+        if mode == "window_zscore":
+            mean = np.mean(x)
+            std = np.std(x)
+            if std <= 0.0:
+                return np.zeros_like(x)
+            return (x - mean) / std
+        if mode == "dataset_zscore":
+            std = float(self.config.dataset_std)
+            if std <= 0.0:
+                raise ValueError("dataset_std must be > 0 for dataset_zscore")
+            return (x - float(self.config.dataset_mean)) / std
+        if mode == "none":
+            return x
+        raise ValueError(
+            "normalization must be one of {'window_zscore','dataset_zscore','none'}"
+        )
 
     # quantize is needed because encoder val dict is discrete but window is continuous
     # we convert each z-scored sample into a bin index so we can get value_dict  from raw float vals
@@ -87,7 +113,7 @@ class WindowEncoder:
 
     def encode_window(self, window: np.ndarray) -> np.ndarray:
         """Encode one signal window into one bipolar hypervector."""
-        z = self.zscore_window(window)
+        z = self.normalize_window(window)
         bin_ids = self.quantize(z)
 
         value_hv = self.value_dict[bin_ids]
