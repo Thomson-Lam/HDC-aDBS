@@ -1,0 +1,20 @@
+{
+  "encoder_config": {
+    "clip_z": 3.0,
+    "dimension": 1000,
+    "n_bins": 16,
+    "seed": 123,
+    "value_init": "rff",
+    "window_length": 128
+  },
+  "label_convention": {
+    "healthy": 0,
+    "pathological": 1
+  },
+  "linear_readout": {
+    "max_iter": 1000,
+    "seed": 123,
+    "solver": "liblinear"
+  },
+  "trainer_type": "linear"
+}

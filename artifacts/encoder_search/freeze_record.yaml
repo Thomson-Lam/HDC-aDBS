@@ -1,0 +1,36 @@
+selected:
+  dimension: 1000
+  n_bins: 16
+  value_init: rff
+  readout: linear
+  clip_z: 3.0
+  seed: 123
+selection_metrics:
+  balanced_accuracy_clean: 1.0
+  auroc_onset: 0.9950694444444445
+  auroc_recovery: 0.989375
+  min_transition_auroc: 0.989375
+  encoding_ms_per_window: 0.06474925142457424
+  model_bytes: 8008
+  rank: 1
+search_config:
+  sampling_rate_hz: 250
+  window_length: 128
+  stride_ms: 50
+  dimensions:
+  - 1000
+  - 5000
+  - 10000
+  bins:
+  - 8
+  - 16
+  value_initializers:
+  - random
+  - rff
+  readouts:
+  - prototype
+  - linear
+  clip_z: 3.0
+  base_seed: 123
+  min_guardrail_auroc: 0.6
+  top_k: 3

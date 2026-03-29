@@ -1,3 +1,4 @@
+# dummy main() from project; ignore this and run scripts in train/.
 def main():
     print("Hello from brain!")
 
