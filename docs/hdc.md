@@ -2,7 +2,7 @@
 
 This document defines how the HDC encoder is validated offline, how hypervectors are evaluated before controller lock-in, and how the frozen detector is evaluated in the closed loop.
 
-It follows the global experiment contract in `docs/experiment-spec.md` and uses the detailed encoder search options listed in `docs/hdc-encoder-optsearch.md`.
+It follows the global experiment contract in `docs/experiment-spec.md` and uses the detailed encoder search options listed in `docs/encoder-searchspace.md`.
 
 ## 1) Scope and intent
 

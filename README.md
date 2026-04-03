@@ -1,224 +1,182 @@
-# HDC-aDBS Testbed
+﻿# HDC-aDBS
 
-Lightweight Hyperdimensional Computing (HDC) control for adaptive deep brain stimulation (aDBS) in an in silico Parkinsonian STN-GPe model.
+*Hyperdimensional-computing adaptive deep brain stimulation testbed for Parkinsonian STN-GPe simulation.*
 
-This repo is currently in the **simulation + offline HDC core** stage.
+**Authors:** Thomson Lam and Oliver Olejar
 
-## What This Project Is
+HDC-aDBS is an in silico research prototype for studying whether a lightweight hyperdimensional-computing detector can act as an adaptive deep brain stimulation trigger under the same conditions as a classical beta-threshold controller.
 
-- Simulate healthy and pathological neural dynamics with an STN-GPe ODE model.
-- Derive a shared LFP-like surrogate stream for controller input.
-- Evaluate HDC-based state detection against a classical beta-threshold baseline.
-- Progress toward a fair 4-condition closed-loop comparison:
-  - no stimulation,
-  - continuous DBS,
-  - classical beta-threshold aDBS,
-  - HDC-triggered aDBS.
+This repository is not a clinical system. It is a simulation-driven benchmark and experimentation project designed to compare controller logic fairly, explain the tradeoffs clearly, and make the current findings easy to inspect.
 
-## Backlog
+## Why This Matters
 
-- [x] 1) Lock experiment rules (spec table and fixed contract)
-- [x] 2) Build simulation and signal pipeline
+In Parkinson's disease, the basal ganglia can become locked into abnormal beta-band oscillations, roughly `13-30 Hz`. In practice, one goal of adaptive deep brain stimulation, or `aDBS`, is to stimulate only when the brain appears to be entering or staying in that pathological state, rather than stimulating continuously.
 
-- [ ] 3) Run open-loop stimulation sanity gate (formal scripted gate pending)
+This project models that idea in a controlled setting. It simulates the interaction between the subthalamic nucleus, `STN`, and the globus pallidus externa, `GPe`, then turns the simulator output into an `LFP surrogate`: a simplified signal that stands in for the kind of neural signal a controller could monitor.
 
-> TODO: run 3) -> 5) -> training HDC
+From there, the project asks a simple question with a non-trivial engineering answer: can a lightweight HDC-based detector be competitive with a classical beta-power trigger when both use the same signal, timing, stimulation rules, and evaluation setup?
 
-- [x] 4) Build HDC core library
-- [x] 4.5) Build HDC models that call the primitives
-- [x] 5) Build dataset + split layer with transitional subsets for more realistic data (core done)
-- [x] 6) Build offline validator + ranking engine (wired to static ODE windows)
+## Project Goal
 
-- [ ] 7) Run selection funnel + freeze final HDC setup (partial: freeze record exists)
-- [ ] 8) Calibrate thresholds + held-out offline report
-- [ ] 9) Integrate and evaluate closed-loop controllers
-- [ ] 10) Add full reproducibility + coverage for post-dataset stages
+The goal of HDC-aDBS is not to prove that HDC is universally better. The goal is to build a fair benchmark that compares two decision statistics under one locked experimental contract:
 
-## Implemented Components Checklist
+- `beta_adbs`: stimulate when causal beta activity crosses a threshold
+- `hdc_adbs`: stimulate when the recent signal pattern looks more pathological than healthy in HDC space
 
-### Simulation and signal path
+That comparison is run against the same shared references:
 
-- [x] STN-GPe ODE right-hand side (`src/simulation/model.py`)
-- [x] Single-run and chunked runner (`src/simulation/runner.py`)
-- [x] LFP surrogate extraction (`src/simulation/lfp.py`)
-- [x] Variable-step -> fixed 250 Hz resampling
-- [x] Signal safety checks (finite values, monotonic timestamps, discontinuity checks)
-- [x] Deterministic seeding support
+- `no_stimulation`
+- `continuous_dbs`
 
-### HDC core stack
+## How the System Works
 
-- [x] Bipolar hypervector primitives (`hdc/primitives.py`)
-- [x] Random + RFF dictionary initialization (`hdc/initializers.py`)
-- [x] Window encoder pipeline (`hdc/encoder.py`)
-- [x] Prototype and linear readouts (`hdc/readouts.py`)
-- [x] Trainer layer with save/load (`hdc/training.py`)
+At a high level, the simulator produces neural activity, the project converts it into one controller-visible signal, and both controllers operate on that same signal stream.
 
-### Offline validator / training flow
+```mermaid
+flowchart LR
+    A[STN-GPe ODE simulator] --> B[Resample to 250 Hz]
+    B --> C[Shared LFP surrogate]
+    C --> D[Rolling 512 ms window every 50 ms]
+    D --> E[Beta-band power statistic]
+    D --> F[HDC encoder plus readout]
+    E --> G[Matched controller state machine]
+    F --> G
+    G --> H[200 ms stimulation burst plus 200 ms lockout]
+    H --> A
+```
 
-- [x] Fixed search config (`hdc/search/config.py`)
-- [x] Frozen ranking rule with guardrail (`hdc/search/validator.py`)
-- [x] Search artifact outputs (`results.jsonl`, `leaderboard.csv`)
-- [x] Freeze record generation (`artifacts/encoder_search/freeze_record.yaml`)
-- [x] Combined validator + train script (`train/valid-train.py`)
-- [x] ODE-backed dataset plugged into validator/train
+The experiment itself is also staged so that offline model selection happens before final benchmark reporting.
 
-### Testing
+```mermaid
+flowchart TD
+    A[Generate simulator trajectories] --> B[Vet and split by trajectory]
+    B --> C[Extract rolling windows]
+    C --> D[Search and train HDC models]
+    D --> E[Calibrate thresholds on validation data]
+    E --> F[Run closed-loop benchmark]
+    F --> G[Export summaries and plots]
+```
 
-- [x] Simulation tests (`tests/test_simulation.py`)
-- [x] HDC core tests (`tests/test_hdc_core.py`)
-- [x] Validator ranking tests (`tests/test_validator_search.py`)
-- [x] Training save/load tests (`tests/test_training_layer.py`)
-- [x] Reproducibility checks (`tests/test_reproducibility_dummy.py`)
+### What gets compared?
 
-## What Is Still Missing (Short List)
+| Condition | What it means |
+| --- | --- |
+| `no_stimulation` | Pathological run with no intervention |
+| `continuous_dbs` | Stimulation is always on |
+| `beta_adbs` | Adaptive controller triggered by beta-band power |
+| `hdc_adbs` | Adaptive controller triggered by HDC similarity margin |
 
-- [x] Classical and HDC closed-loop controller state machines with matched mechanics -- improve the metrics! 
-- [ ] Final threshold calibration on validation-only and single held-out test report
+The important fairness rule is that both adaptive controllers see the same resampled signal, use the same `512 ms` windows, make decisions every `50 ms`, and apply the same stimulation burst and lockout timing.
+
+## HDC in Plain English
+
+Hyperdimensional computing, `HDC`, turns short signal windows into high-dimensional binary or bipolar patterns called hypervectors. Instead of hand-checking one feature at a time, the controller compares whether the current window looks more like a stored healthy pattern or a stored pathological pattern.
+
+In this project, that matters because HDC can be efficient at inference time while still capturing richer temporal structure than a single beta-power threshold. The project therefore treats HDC as a candidate lightweight controller signal, not as a guaranteed improvement.
+
+## Current Findings
+
+The project already has a full offline-to-closed-loop pipeline, and the current artifacts are useful because they show what worked, what did not, and where the next iteration should go.
+
+### What the project has already demonstrated
+
+- The simulator can generate more than just clean healthy and clean pathological extremes.
+- The dataset pipeline includes transition-focused subsets such as `onset`, `recovery`, and `moderate`, which makes evaluation more realistic than training only on easy end states.
+- The HDC search pipeline explored `24` encoder configurations across dimension, binning, initialization, and readout choices.
+- The project compared prototype-style bundled hypervectors against linear or logistic-style classification over hypervectors.
+
+### What the current frozen artifacts say
+
+The checked-in frozen outputs come from:
+
+- `artifacts/encoder_search/freeze_record.yaml`
+- `artifacts/models/train_report.yaml`
+- `artifacts/closed_loop/summary.yaml`
+
+| Finding | Current snapshot |
+| --- | --- |
+| Frozen encoder | `D=10000`, `n_bins=8`, `value_init=random` |
+| Frozen readout | `prototype` |
+| Selection outcome | Fallback winner because no candidate passed all guardrails |
+| Validation clean prototype score | `balanced_accuracy=0.631`, `auroc=0.721` |
+| Held-out clean prototype test score | `balanced_accuracy=0.548`, `auroc=0.679` |
+| Recovery robustness | Weak, with validation recovery AUROC currently `0.194` |
+| Healthy specificity | Still weak, with high false-trigger behavior in stored benchmark runs |
+
+The benchmark is therefore best understood as a strong systems milestone rather than a final performance result. It shows that the project can:
+
+- build synthetic trajectories from the simulator
+- convert them into a reproducible dataset
+- search and freeze HDC detector settings
+- run matched closed-loop comparisons
+- report quality, efficiency, and specificity metrics
+
+At the same time, the current numbers make it clear that the frozen controller settings are not yet where they need to be.
+
+### Closed-loop snapshot
+
+| Condition | Mean beta power | Pathological occupancy | Mean decision time per window (ms) |
+| --- | ---: | ---: | ---: |
+| `no_stimulation` | `7.294` | `0.500` | `0.000` |
+| `continuous_dbs` | `8.363` | `0.649` | `0.000` |
+| `beta_adbs` | `8.292` | `0.651` | `0.003` |
+| `hdc_adbs` | `8.019` | `0.526` | `0.694` |
+
+Healthy-run specificity is still a major open issue in the stored benchmark:
+
+- `beta_adbs` healthy false-trigger rate: `120.19` stim events per minute
+- `hdc_adbs` healthy false-trigger rate: `91.35` stim events per minute
+
+## Next Steps
+
+The slide deck and the checked-in artifacts point in the same direction: the project now needs stronger learning and controller refinement, not just more infrastructure.
+
+- Improve learning over hypervectors instead of relying only on raw window encoding and simple prototype comparison.
+- Replace the current manual-style grid search with stronger encoder optimization so better HDC settings can be discovered more efficiently.
+- Continue exploring linear classification over hypervectors where it improves fit while preserving efficient inference.
+- Complete a stronger full-condition closed-loop comparison after better thresholding and detector settings are frozen.
+- Reduce false triggers in healthy runs and improve recovery behavior before making stronger claims about adaptive control quality.
 
 ## Quickstart
 
-1. Install dependencies:
+If you want to reproduce the current pipeline from the repository root:
 
 ```bash
 uv sync
-```
-
-2. Run tests:
-
-```bash
-uv run pytest tests -q
-```
-
-3. Run validator + training flow:
-
-```bash
-uv run python train/valid-train.py
-```
-
-4. Build and split static ODE dataset:
-
-```bash
 uv run python train/build-static-dataset.py
 uv run python train/prepare-static-splits.py
+uv run python train/valid-train.py
+uv run python -m controllers.run_closedloop_benchmark
+uv run python plots/generate_all.py
 ```
 
-Outputs:
+Main outputs land in:
 
-- `train/build-static-dataset.py`
-  - `artifacts/datasets/static_v1/trajectories/*.npz`
-  - `artifacts/datasets/static_v1/manifest.csv`
-  - `artifacts/datasets/static_v1/build_config.yaml`
-- `train/prepare-static-splits.py`
-  - `artifacts/datasets/static_v1/manifest_with_splits.csv`
-  - `artifacts/datasets/static_v1/vet_issues.csv` (only written if issues are found)
+- `artifacts/datasets/static_v1/`
+- `artifacts/encoder_search/`
+- `artifacts/models/`
+- `artifacts/closed_loop/`
+- `artifacts/plots/`
 
-## Current Training Flow
-
-- `train/valid-train.py` now uses static ODE trajectories/windows from `artifacts/datasets/static_v1`.
-- If dataset manifests are missing, they are built/prepared automatically before validator/training.
-- Validator guardrails now include onset, recovery, moderate, and healthy holdout false-trigger checks.
-
-## Produced results 
-
-- Encoder search:
-  - `artifacts/encoder_search/results.jsonl`
-  - `artifacts/encoder_search/leaderboard.csv`
-  - `artifacts/encoder_search/freeze_record.yaml`
-- Trained models:
-  - `artifacts/models/prototype/`
-  - `artifacts/models/linear/`
-  - `artifacts/models/train_report.yaml`
-  - `artifacts/models/training_audit.yaml`
+For the step-by-step command guide and testing commands, see [docs/usage.md](docs/usage.md).
 
 ## Repository Layout
 
-```text
-brain/
-├── README.md
-├── configs/
-│   └── sim_config.py # STN-GPe model configs 
-├── ode-checks/
-│   └── open-loop-sanity.py # entry script for checking 
-├── src/
-│   ├── simulation/
-│   │   ├── model.py # ODE model 
-│   │   ├── runner.py # utils for running the sim model + LFP for signals for the controller
-│   │   ├── lfp.py # LFP surrogate core defs 
-│   │   └── open_loop_sanity.py # core utils for verifying ODE sim model behavior
-│   └── data/ # data pipeline 
-│       ├── __init__.py
-│       ├── build_static_dataset.py # core def for generating trajectories and manifest
-│       ├── static_dataset.py # lib code for vetting data
-│       └── hdc_adapter.py # adapter Object Oriented Design pattern for data pipeline outputs -> HDC, which expects ValidationData 
-├── hdc/
-│   ├── primitives.py # core binding, bundling logic 
-│   ├── initializers.py # random vs RFF init 
-│   ├── dictionaries.py # dictionary stores for hypervectors
-│   ├── encoder.py # encoder classdef 
-│   ├── readouts.py # training layer for raw HDC vs logreg over raw hypervectors 
-│   ├── training.py # encoding/training process primitives 
-│   └── search/ # code for mini grid search for hypervector encoder 
-│       ├── config.py # set config for search space here 
-│       ├── validator.py # core grid search code
-│       └── run.py # entry script called by ../train/valid-train.py
-├── controllers/
-│   ├── __init__.py
-│   ├── base.py # shared controller state machine + metrics
-│   ├── beta_controller.py # beta-threshold adaptive controller
-│   ├── hdc_controller.py # HDC margin-based adaptive controller
-│   ├── waveform.py # pulse-train waveform primitives (Option B)
-│   ├── eval_metrics.py # pure closed-loop benchmark metrics
-│   ├── run_controller.py # closed-loop ODE harness
-│   └── run_closedloop_benchmark.py # 4-condition benchmark runner
-├── train/
-│   ├── valid-train.py # main training code for direct HDC and logreg over HDC 
-│   ├── build-static-dataset.py # script calls src/data/build_static_dataset.py
-│   └── prepare-static-splits.py 
-├── artifacts/
-│   ├── datasets/
-│   │   └── static_v1/
-│   │       ├── trajectories/*.npz
-│   │       ├── manifest.csv # data metadata 
-│   │       ├── manifest_with_splits.csv # split metadata
-│   │       └── build_config.yaml
-│   ├── encoder_search/ # search results for the encoder
-│   │   ├── results.jsonl
-│   │   ├── leaderboard.csv
-│   │   └── freeze_record.yaml
-│   ├── models/ # model vectors
-│   │   ├── prototype/
-│   │   ├── linear/
-│   │   ├── train_report.yaml
-│   │   └── training_audit.yaml
-│   ├── closed_loop/ # closed-loop benchmark outputs
-│   │   ├── per_run_metrics.csv
-│   │   ├── summary_by_condition.csv
-│   │   ├── summary.yaml
-│   │   └── run_manifest.yaml
-│   └── open_loop_sanity/ # open loop controller validation for ODE model
-│       ├── summary.yaml
-│       ├── per_seed_metrics.csv
-│       ├── seed0_traces.png
-│       ├── beta_summary.png
-│       └── open_loop_sanity.log
-├── tests/ # tests for core code 
-│   ├── test_controllers.py
-│   ├── test_closedloop_metrics.py
-│   ├── test_simulation.py
-│   ├── test_open_loop_sanity.py
-│   ├── test_hdc_core.py
-│   ├── test_data_pipeline.py
-│   ├── test_validator_search.py
-│   ├── test_training_layer.py
-│   └── test_reproducibility_dummy.py
-└── docs/
-    ├── experiment-spec.md
-    ├── encoder-searchspace.md
-    ├── models.md
-    └── planning/
-```
+- `configs/`: simulator defaults and experiment settings
+- `src/`: simulation and dataset pipeline
+- `hdc/`: hypervector encoding, readouts, training, and search
+- `controllers/`: beta and HDC adaptive controllers plus benchmark harness
+- `train/`: dataset build, split, training, and calibration entrypoints
+- `plots/`: plot-generation scripts
+- `artifacts/`: generated datasets, model artifacts, summaries, and figures
+- `tests/`: simulation, data, HDC, and controller tests
+- `docs/`: technical reference docs
 
-## Notes
+## Further Reading
 
-- Locked experiment contract lives in `docs/experiment-spec.md`.
-- This is a research prototype (not a clinical system).
+- [docs/experiment-spec.md](docs/experiment-spec.md)
+- [docs/usage.md](docs/usage.md)
+- [docs/ode-test.md](docs/ode-test.md)
+- [docs/hdc.md](docs/hdc.md)
+- [docs/models.md](docs/models.md)
+

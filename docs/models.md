@@ -195,8 +195,9 @@ Current script flow:
 
 Important current behavior:
 
-- `train/valid-train.py` uses dummy data from `hdc/search/run.py`.
-- This is intentional for now and should be replaced by real trajectory split adapters once the ODE data pipeline is available.
+- `train/valid-train.py` loads real static ODE windows through `src/data/hdc_adapter.py`.
+- If the static dataset or split manifest is missing, the pipeline rebuilds the required artifacts before validator search and training.
+- Held-out clean test windows are reported for inspection, but they are not used for model selection or threshold calibration.
 
 ## 10) Test coverage relevant to models
 
